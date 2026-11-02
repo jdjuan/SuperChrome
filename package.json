@@ -1,10 +1,10 @@
 {
   "name": "superchrome",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "private": true,
   "description": "Personal Chrome toolkit",
   "scripts": {
-    "test": "node tests/verify.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs"
+    "test": "node tests/verify.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs && node tests/linkedin.cjs"
   },
   "devDependencies": {
     "jsdom": "^27.0.0"

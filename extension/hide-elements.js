@@ -5,6 +5,7 @@
   let style, picker;
   const instagram = ['instagram.com','www.instagram.com'].includes(location.hostname);
   const x = ['x.com','www.x.com','twitter.com','www.twitter.com'].includes(location.hostname);
+  const linkedin = ['linkedin.com','www.linkedin.com'].includes(location.hostname);
   const social = instagram || x;
   const siteName = x ? 'X' : 'Instagram';
   const routeAttribute = x ? 'data-superchrome-x-home' : 'data-superchrome-instagram-home';
@@ -53,7 +54,7 @@
     if (!style?.isConnected) { style = document.createElement('style'); style.dataset.superchrome = 'hidden-elements'; document.documentElement.append(style); }
     while (style.sheet.cssRules.length) style.sheet.deleteRule(0);
     for (const rule of data[key] || []) {
-      try { style.sheet.insertRule(`${social ? `html[${routeAttribute}]:not([data-superchrome-${x ? 'x' : 'instagram'}-revealed]) :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
+      try { style.sheet.insertRule(`${social ? `html[${routeAttribute}]:not([data-superchrome-${x ? 'x' : 'instagram'}-revealed]) :is(${rule.selector})` : linkedin ? `html:not([data-superchrome-linkedin-revealed]) :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
     }
   }
   function startPicker() {

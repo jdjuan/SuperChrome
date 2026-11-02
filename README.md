@@ -80,3 +80,9 @@ A background worker records the video ID in `chrome.storage.session` before call
 Detection is limited to watch/live video pages and visible YouTube player error/enforcement elements with matching warning text (English, plus common Spanish headline forms). Hidden templates, ordinary video errors and comments are ignored. YouTube may change its markup or wording. Automated tests cover once-only behavior, concurrent requests, new documents/workers, SPA navigation, false positives and storage failure; live reproduction in Brave is not verified.
 
 The feature uses existing permissions. [Chrome storage documentation](https://developer.chrome.com/docs/extensions/reference/api/storage) and [Tabs API documentation](https://developer.chrome.com/docs/extensions/reference/api/tabs) describe the session state and reload APIs used here.
+
+## LinkedIn focus
+
+**Hide → Hide LinkedIn home feed** independently controls the timeline on `/feed` and `/feed/`. It presents the same “You have better things to do.” message and 1/3/5-minute choices, with a persisted deadline, countdown and Hide now control. Expiry reads “Time’s up. LinkedIn will survive.” The settings use independent `linkedinFocus` and `linkedinRevealUntil` keys. The post composer, messaging overlays, notification/job/profile routes and individual post pages (including `/feed/update/…`) are excluded. Existing saved hide rules are temporarily paused during a LinkedIn allowance and otherwise remain intact, including older sign-in prompt rules.
+
+Local DOM tests cover feed selectors, dynamically inserted posts, dialog/chat/composer exclusions, timed breaks, refresh persistence and route changes. Live verification in a logged-in LinkedIn feed is pending. The feature uses existing permissions.
