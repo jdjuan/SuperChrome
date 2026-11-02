@@ -4,13 +4,17 @@
   const key = `hidden:${location.hostname}`;
   let style, picker;
   const instagram = ['instagram.com','www.instagram.com'].includes(location.hostname);
-  const routeAttribute = 'data-superchrome-instagram-home';
+  const x = ['x.com','www.x.com','twitter.com','www.twitter.com'].includes(location.hostname);
+  const social = instagram || x;
+  const siteName = x ? 'X' : 'Instagram';
+  const routeAttribute = x ? 'data-superchrome-x-home' : 'data-superchrome-instagram-home';
+  const isHome = () => x ? ['/','/home','/home/'].includes(location.pathname) : location.pathname === '/';
   let lastUrl;
   function syncRoute() {
     lastUrl = location.href;
-    document.documentElement?.toggleAttribute(routeAttribute, location.pathname === '/');
+    document.documentElement?.toggleAttribute(routeAttribute, isHome());
   }
-  if (instagram) {
+  if (social) {
     syncRoute();
     new MutationObserver(()=>{if(location.href!==lastUrl)syncRoute();}).observe(document,{childList:true,subtree:true});
     window.addEventListener('popstate',syncRoute);
@@ -44,12 +48,12 @@
   }
   async function apply() {
     const data = await chrome.storage.local.get(key);
-    if (instagram) syncRoute();
+    if (social) syncRoute();
     if (!document.documentElement) return;
     if (!style?.isConnected) { style = document.createElement('style'); style.dataset.superchrome = 'hidden-elements'; document.documentElement.append(style); }
     while (style.sheet.cssRules.length) style.sheet.deleteRule(0);
     for (const rule of data[key] || []) {
-      try { style.sheet.insertRule(`${instagram ? `html[${routeAttribute}]:not([data-superchrome-instagram-revealed]) :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
+      try { style.sheet.insertRule(`${social ? `html[${routeAttribute}]:not([data-superchrome-${x ? 'x' : 'instagram'}-revealed]) :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
     }
   }
   function startPicker() {
@@ -78,7 +82,7 @@
       } catch(error) {bar.firstChild.textContent=error.message+' ';saving=false;}
     });
   }
-  chrome.runtime.onMessage.addListener((message,sender,reply)=>{if(message.type==='hide:pick'){if(instagram && location.pathname!=='/'){reply({ok:false,error:'On Instagram, use the picker on Home. Saved hides are disabled elsewhere to protect messages.'});return;}startPicker();reply({ok:true});}});
+  chrome.runtime.onMessage.addListener((message,sender,reply)=>{if(message.type==='hide:pick'){if(social && !isHome()){reply({ok:false,error:`On ${siteName}, use the picker on Home. Saved hides are disabled elsewhere to protect messages.`});return;}startPicker();reply({ok:true});}});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes[key])apply().catch(()=>{});});
   if(document.documentElement)apply().catch(()=>{});else document.addEventListener('DOMContentLoaded',()=>apply().catch(()=>{}),{once:true});
 })();

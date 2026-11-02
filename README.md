@@ -62,3 +62,11 @@ Instagram safety: saved click-to-hide rules (including older broad selectors) ap
 With focus enabled, Home displays “You have better things to do.” and “But if not, set a limit:” with 1 min, 3 min and 5 min buttons. The observed feed-and-suggestions shell is hidden as a unit (including loading spinners and sidebar footer links); navigation and dialogs remain outside that boundary. Disabling focus or leaving Home removes the message and restores the original layout.
 
 Choosing a limit temporarily reveals the Home feed, stories and suggestions, including elements hidden by saved Instagram rules. A small countdown includes a Hide now control. The wall-clock deadline is stored locally per browser and shared across Instagram tabs; refreshes do not reset it. At expiry, Home is hidden again with “Time’s up. Instagram will survive.” Messages and notifications are unaffected. Background-tab throttling is handled by checking the deadline on return to the page. Changing the focus checkbox clears any active allowance.
+
+## X focus
+
+On X (and legacy twitter.com URLs), **Hide → Hide X home feed** independently controls the Home timeline. It uses the same message and 1/3/5-minute allowances as Instagram, with separate `xFocus` and `xRevealUntil` storage. Expiry reads “Time’s up. X will survive.” Timers survive refreshes and share the deadline across tabs in the same browser. The post composer, sidebar, messages drawer and navigation remain available. The feature does not hide notifications, messages, search, profiles or individual posts. Saved generic hide rules on X are Home-only and pause during an allowance. No new permissions were added.
+
+X selectors are covered by local DOM integration tests; this release has not been verified in a live X account.
+
+X structural selector reference: [Minimal Theme’s maintained selector definitions](https://github.com/typefully/minimal-twitter/blob/main/content-scripts/src/selectors.js). Feed posts are matched by `data-testid` rather than requiring a specific HTML tag.
