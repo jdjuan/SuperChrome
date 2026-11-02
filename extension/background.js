@@ -31,3 +31,4 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  port.onDisconnect.addListener(()=>{const error=chrome.runtime.lastError;if(error&&!finished)chrome.storage.local.set({job:{message:error.message}});port=null;});
  port.postMessage({action:'download',url:message.url});reply({ok:true});
 });
+importScripts('hide-background.js');

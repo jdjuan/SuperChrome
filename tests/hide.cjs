@@ -1,0 +1,25 @@
+const {JSDOM}=require('jsdom');const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),vm=require('vm');
+const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8');const tick=()=>new Promise(r=>setImmediate(r));
+(async()=>{
+ const store={},listeners=[];let handler,reply;
+ const context={URL,crypto:require('node:crypto').webcrypto,chrome:{runtime:{onMessage:{addListener:f=>handler=f}},storage:{local:{get:async key=>({[key]:store[key]}),set:async data=>{for(const [key,value]of Object.entries(data)){store[key]=structuredClone(value);listeners.forEach(fn=>fn({[key]:{newValue:value}},'local'));}}}}}};vm.createContext(context);vm.runInContext(read('hide-background.js'),context);
+ function page(url='https://www.linkedin.com/'){const dom=new JSDOM('<html><head></head><body><nav><a href="/login">Sign in</a></nav><div id="credential_picker_container"><iframe src="https://accounts.google.com/gsi/iframe"></iframe></div><main>Keep me</main></body></html>',{url,runScripts:'outside-only'}),w=dom.window;let shadow,message;
+ w.CSS={escape:s=>s.replace(/[^a-zA-Z0-9_-]/g,c=>'\\'+c)};
+ const attach=w.Element.prototype.attachShadow;w.Element.prototype.attachShadow=function(options){shadow=attach.call(this,options);return shadow;};
+ w.chrome={storage:{local:context.chrome.storage.local,onChanged:{addListener:f=>listeners.push(f)}},runtime:{onMessage:{addListener:f=>message=f},sendMessage:msg=>new Promise(resolve=>handler(msg,{tab:{url},frameId:0},resolve))}};
+ w.eval(read('hide-elements.js'));return{w,pick:()=>message({type:'hide:pick'},{},()=>{}),shadow:()=>shadow};}
+ let p=page();await tick();p.pick();const iframe=p.w.document.querySelector('iframe');p.w.document.elementFromPoint=()=>iframe;let shadow=p.shadow();shadow.querySelector('.glass').dispatchEvent(new p.w.MouseEvent('pointermove',{clientX:10,clientY:10}));p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));shadow.querySelector('.glass').click();await tick();await tick();assert.equal(store['hidden:www.linkedin.com'][0].selector,'#credential_picker_container');assert.equal(p.w.document.querySelector('[data-superchrome]').sheet.cssRules.length,1);
+ // New document restores saved rules; dynamically inserted matching elements inherit CSS.
+ p=page('https://www.linkedin.com/feed');await tick();assert.equal(p.w.document.querySelector('[data-superchrome]').sheet.cssRules[0].selectorText,'#credential_picker_container');const fresh=p.w.document.createElement('div');fresh.id='credential_picker_container';p.w.document.body.append(fresh);assert.equal(p.w.getComputedStyle(fresh).display,'none');
+ // A click works even when no pointermove was delivered beforehand.
+ const direct=page('https://direct.example');await tick();direct.pick();direct.w.document.elementFromPoint=()=>direct.w.document.querySelector('a');direct.shadow().querySelector('.glass').click();await tick();await tick();assert.equal(store['hidden:direct.example'].length,1);
+ const other=page('https://other.example');await tick();assert.equal(other.w.document.querySelector('[data-superchrome]').sheet.cssRules.length,0);
+ // Restore removes CSS immediately; cancel never creates a rule.
+ await context.chrome.storage.local.set({'hidden:www.linkedin.com':[]});await tick();assert.equal(p.w.document.querySelector('[data-superchrome]').sheet.cssRules.length,0);p.pick();p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(store['hidden:www.linkedin.com'].length,0);assert.equal(p.shadow().host.isConnected,false);
+ // Concurrent writes are serialized, and a subframe cannot create top-site rules.
+ const send=selector=>new Promise(resolve=>handler({type:'hide:add',selector,label:'test'},{tab:{url:'https://www.linkedin.com'},frameId:0},resolve));await Promise.all([send('#a'),send('#b'),send('#a')]);assert.equal(store['hidden:www.linkedin.com'].length,2);assert.equal(handler({type:'hide:add',selector:'#bad'},{tab:{url:'https://www.linkedin.com'},frameId:1},()=>{}),undefined);
+ // Popup rule removal and restoration use the same per-site storage.
+ const dom=new JSDOM(read('popup.html'),{url:'https://extension.test',runScripts:'outside-only'}),w=dom.window;
+ w.chrome={tabs:{query:async()=>[{id:1,url:'https://www.linkedin.com'}]},storage:{local:context.chrome.storage.local,onChanged:{addListener:()=>{}}}};w.eval(read('hide-popup.js'));await tick();assert.equal(w.document.querySelectorAll('#hidden-list li').length,2);w.document.querySelector('#hidden-list button').click();await tick();assert.equal(store['hidden:www.linkedin.com'].length,1);w.document.querySelector('#restore-hidden').click();await tick();assert.equal(store['hidden:www.linkedin.com'].length,0);
+ console.log('PASS: iframe parent picking, persistence, dynamic content, site isolation, restoration, cancellation, concurrent saves, duplicate prevention, popup controls.');
+})().catch(error=>{console.error(error);process.exit(1)});

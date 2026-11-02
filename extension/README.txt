@@ -1,5 +1,7 @@
 SuperChrome — combined local Chrome extension
 
+Includes remembered element hiding: Hide → Pick element to hide; ↑ selects a parent, ↓ a child, Esc cancels. Restore choices from the Hide tab.
+
 Includes:
 - YouTube, Instagram and X video downloads using the existing native yt-dlp helper.
 - Facebook reel dates/views inspection and Watch navigation.
@@ -21,8 +23,8 @@ INSTALL / REPLACE
    isolates storage per extension ID; the old guard's settings remain in its
    disabled extension and are not copied automatically.
 
-The native downloader helper stays in its original location:
-/Users/juanherrera/Documents/Codex/2026-10-16/if-i-found-inspiration-for-the/outputs/local-video-downloader/helper
+The native downloader helper is registered from the repository:
+/Users/juanherrera/CODE/SuperChrome/helper
 Do not delete that folder or its native host registration.
 
 PERMISSIONS

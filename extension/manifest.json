@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "minimum_chrome_version": "119",
-  "description": "Juan\u2019s video downloader, Facebook reel details, and per-site popup protection.",
+  "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [
     "storage",
     "webNavigation",
@@ -47,6 +47,16 @@
       "run_at": "document_start",
       "all_frames": true,
       "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "hide-elements.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9ca0fXLR/jeJu/CnB9sp854rNQy6zpYTOuYmEtZvpNkLNOjNP2rPKbAqkKCHbBdD+Q76JXiT6hn52pvkEIMbiM+/WZ1G0hbv972YVxTPnWvc6yfVLMgKUMZMVFU7izunZfYlOh8NTjky4wV1hEMYgc57SH6chmXOaaXq9BXX5S7iehYd2Iti/YXKpsCr1NZndFMRaQrWiSOb5KGGGitQQBEAXz8ZK2uY3UrMO4AeoxrFhXI0iyUCR/KZoXaZ60Aer1w5tQ+LTtVSVN1Ti4xMDQ1suyize51R/k6v+cLT1wwGvxDP0wqlSxaF7YaSdppwB8Lo0CTIBxLCX6IOL0D0PQIDAQAB",
