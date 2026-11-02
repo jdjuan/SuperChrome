@@ -23,7 +23,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'
  const shell=lw.document.querySelector('#home-shell'), main=lw.document.querySelector('main');
  assert.equal(shell.hasAttribute('data-superchrome-instagram-home-content'),true);
  assert.equal(lw.getComputedStyle(shell).display,'none');
- let message=main.querySelector('[data-superchrome="instagram-message"]');assert.ok(message);assert.equal(message.shadowRoot.querySelector('h1').textContent,'You’re all caught up.');assert.equal(message.shadowRoot.querySelector('p').textContent,'With absolutely nothing.');
+ let message=main.querySelector('[data-superchrome="instagram-message"]');assert.ok(message);assert.equal(message.shadowRoot.querySelector('h1').textContent,'You have better things to do.');assert.equal(message.shadowRoot.querySelector('p').textContent,'But if not, set a limit:');
  assert.equal(lw.document.querySelector('[role=dialog]').hasAttribute('data-superchrome-instagram-home-content'),false);assert.notEqual(lw.getComputedStyle(lw.document.querySelector('nav')).display,'none');
  // Toggling restores both columns; repeated reconciliation never duplicates copy.
  change({instagramFocus:{newValue:false}},'local');assert.equal(message.isConnected,false);assert.notEqual(lw.getComputedStyle(shell).display,'none');

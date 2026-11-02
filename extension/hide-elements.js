@@ -49,7 +49,7 @@
     if (!style?.isConnected) { style = document.createElement('style'); style.dataset.superchrome = 'hidden-elements'; document.documentElement.append(style); }
     while (style.sheet.cssRules.length) style.sheet.deleteRule(0);
     for (const rule of data[key] || []) {
-      try { style.sheet.insertRule(`${instagram ? `html[${routeAttribute}] :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
+      try { style.sheet.insertRule(`${instagram ? `html[${routeAttribute}]:not([data-superchrome-instagram-revealed]) :is(${rule.selector})` : rule.selector} { display: none !important; }`,style.sheet.cssRules.length); } catch { /* Ignore an obsolete selector. */ }
     }
   }
   function startPicker() {
