@@ -14,6 +14,6 @@ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'
  w.history.pushState({},'','/direct/inbox/');w.dispatchEvent(new w.PopStateEvent('popstate'));assert.equal(hidden(),0);
  let response;picker({type:'hide:pick'},{},r=>response=r);assert.equal(response.ok,false);
  }
- const d=new JSDOM(read('popup.html'),{runScripts:'outside-only'});d.window.chrome={tabs:{query:async()=>[{url:'https://www.instagram.com/direct/inbox/'}]},storage:{local:{get:async()=>({})},onChanged:{addListener:()=>{}}}};d.window.eval(read('hide-popup.js'));await tick();assert.equal(d.window.document.querySelector('#pick-element').disabled,true);assert.match(d.window.document.querySelector('#hide-status').textContent,/only on Home/);
+ const d=new JSDOM(read('popup.html'),{runScripts:'outside-only'});d.window.chrome={tabs:{query:async()=>[{url:'https://www.instagram.com/direct/inbox/'}]},storage:{local:{get:async()=>({})},onChanged:{addListener:()=>{}}}};d.window.eval(read('hide-popup.js'));await tick();assert.equal(d.window.document.querySelector('#pick-element').disabled,true);assert.match(d.window.document.querySelector('#hide-status').textContent,/Open Instagram Home/);
  console.log('PASS: legacy broad selectors cannot hide Instagram inbox, threads, activity, profiles or posts; Home and SPA navigation remain scoped.');
 })().catch(e=>{console.error(e);process.exit(1)});
