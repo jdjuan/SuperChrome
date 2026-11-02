@@ -4,7 +4,7 @@ A personal Chrome extension combining video downloads, Facebook reel details, an
 
 ## Features
 
-- **Instagram focus:** hides Home feed posts and the top stories tray by default on Instagram. Messages, notifications, profiles and individual posts remain available. Switch it off under **Hide → Hide Instagram home feed & stories**. The preference persists separately in each browser.
+- **Instagram focus:** hides Home feed posts, the top stories tray and the suggestions sidebar by default on Instagram. Messages, notifications, profiles and individual posts remain available. Switch it off under **Hide → Hide Instagram feed, stories & suggestions**. The preference persists separately in each browser.
 - **Hide:** choose **Hide → Pick element to hide**, point at an element, and click. Use ↑ to select its parent container, ↓ to select a child, and Esc to cancel. Choices persist per hostname across future visits and apply to dynamically inserted matching elements. Restore individual items or all items from the Hide tab. Rules stay local to each browser and may need to be picked again if a website changes its layout. Cross-origin popups can be hidden by selecting their enclosing iframe/container; content inside closed shadow roots is not individually selectable.
 - **Download:** save YouTube, Instagram and X videos to `~/Downloads/Local Videos` through a local yt-dlp/FFmpeg helper. Downloads continue after the popup closes.
 - **Reel details:** inspect available Facebook video dates and views, or open a reel in Watch. Facebook can omit metadata or redirect back to Reels.
@@ -58,3 +58,5 @@ Hide was checked in Chrome on LinkedIn: the Agree & Join overlay, Google account
 Instagram focus is scoped to the Home route and targets feed articles and Instagram’s `story_tray` marker, excluding dialogs. SPA navigation, newly loaded posts, saved preferences, messages/notification routes and profile/post routes are covered by tests. No additional permissions are required.
 
 Instagram safety: saved click-to-hide rules (including older broad selectors) apply only on Home. They are automatically suspended on inbox, conversation, activity, profile and post routes; the picker is offered only on Home for Instagram. This prevents shared Instagram layout classes from blanking the inbox. Other websites retain hostname-wide rules.
+
+With focus enabled, Home displays “You’re all caught up. With absolutely nothing.” in a large, centered typographic composition. The observed feed-and-suggestions shell is hidden as a unit (including loading spinners and sidebar footer links); navigation and dialogs remain outside that boundary. Disabling focus or leaving Home removes the message and restores the original layout.
