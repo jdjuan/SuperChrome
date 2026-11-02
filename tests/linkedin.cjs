@@ -16,11 +16,19 @@ const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8'),tick
  // Current live LinkedIn markup: mainFeed is a list which includes composer,
  // sort controls, lazy-mount wrappers and componentkey-based post cards.
  const modern=new JSDOM('<html><body><header>Navigation</header><main><section aria-label="Primary content"><div role="list" data-testid="mainFeed"><div id="compose"><div role="listitem"><div role="button">Start a post</div></div></div><div id="sort">Sort by: Top</div><div id="first-lazy" style="display:contents"><div role="listitem" componentkey="update-card-focusABCFeedType_MAIN_FEED_RELEVANCE"><h2>Feed post</h2></div></div></div></section><aside>Sidebar</aside><div role="dialog"><div componentkey="update-card-focusMODAL">Preview</div></div></main><div class="msg-overlay-container">Messages</div></body></html>',{url:'https://www.linkedin.com/feed/',runScripts:'outside-only'}),mw=modern.window;
- mw.setInterval=()=>{};mw.chrome={storage:{local:{get:async defaults=>({...defaults,linkedinRevealUntil:0}),set:async()=>{}},onChanged:{addListener:()=>{}}}};mw.eval(read('linkedin-focus.js'));await tick();
+ let modernChange;mw.setInterval=()=>{};mw.chrome={storage:{local:{get:async defaults=>({...defaults,linkedinRevealUntil:0}),set:async()=>{}},onChanged:{addListener:fn=>modernChange=fn}}};mw.eval(read('linkedin-focus.js'));await tick();
  const currentSelector=mw.document.querySelector('style').textContent.split(' {')[0];const card=mw.document.querySelector('#first-lazy [role=listitem]');assert.equal(card.matches(currentSelector),true);assert.equal(mw.getComputedStyle(card).display,'none');
  for(const q of ['#compose','#sort','[role=dialog] [componentkey]','.msg-overlay-container','aside','header'])assert.equal(mw.document.querySelector(q).matches(currentSelector),false,q);
  const message=mw.document.querySelector('[data-superchrome="linkedin-message"]');assert.equal(message.parentElement.dataset.testid,'mainFeed');assert.equal(message.nextElementSibling.id,'first-lazy');
  const dynamic=mw.document.createElement('div');dynamic.setAttribute('componentkey','update-card-focusDYNAMIC');mw.document.querySelector('[data-testid=mainFeed]').append(dynamic);await tick();assert.equal(dynamic.matches(currentSelector),true);assert.equal(mw.document.querySelectorAll('[data-superchrome="linkedin-message"]').length,1);
+ // Live feed loaders are SVG progress bars outside the post-card wrappers.
+ const feed=mw.document.querySelector('[data-testid=mainFeed]');
+ const loader=mw.document.createElementNS('http://www.w3.org/2000/svg','svg');loader.setAttribute('role','progressbar');feed.append(loader);await tick();assert.equal(loader.matches(currentSelector),true);assert.equal(mw.getComputedStyle(loader).display,'none');
+ const modalLoader=loader.cloneNode();mw.document.querySelector('[role=dialog]').append(modalLoader);assert.equal(modalLoader.matches(currentSelector),false);
+ const chatLoader=loader.cloneNode();mw.document.querySelector('.msg-overlay-container').append(chatLoader);assert.equal(chatLoader.matches(currentSelector),false);
+ modernChange({linkedinRevealUntil:{newValue:Date.now()+60000}},'local');assert.equal(loader.matches(currentSelector),false,'feed loaders return during a timed break');
+ modernChange({linkedinRevealUntil:{newValue:1}},'local');assert.equal(loader.matches(currentSelector),true,'feed loaders hide when the break ends');
+ modernChange({linkedinFocus:{newValue:false}},'local');assert.equal(loader.matches(currentSelector),false,'checkbox restores loaders');modernChange({linkedinFocus:{newValue:true}},'local');
  mw.history.pushState({},'','/messaging/');mw.document.body.append(mw.document.createElement('span'));await tick();assert.equal(card.matches(currentSelector),false);assert.equal(message.isConnected,false);
  console.log('PASS: LinkedIn feed-only scope, dynamic posts, composer/dialog/chat preservation, 1/3/5-minute breaks, refresh persistence, expiry, independent checkbox.');
 })().catch(e=>{console.error(e);process.exit(1)});

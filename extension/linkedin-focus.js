@@ -10,7 +10,7 @@
     try { await chrome.storage.local.set({linkedinRevealUntil:Date.now()+minutes*60000}); }
     catch { const status=message?.shadowRoot.querySelector('[role="status"]');if(status)setText(status,'Could not start the timer. Try again.'); }
   }
-  const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
+  const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
   function update() {
     if (!document.documentElement) return;
     lastUrl = location.href;
