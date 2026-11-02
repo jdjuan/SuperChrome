@@ -56,3 +56,5 @@ Juan authorizes automatic commits and pushes of verified updates to this extensi
 Hide was checked in Chrome on LinkedIn: the Agree & Join overlay, Google account prompt, and top Sign in button were selected through the picker. Saved overlay rules persisted after refreshing the page. Chrome and Brave were reloaded to version 2.1.0. User-specific hiding rules are browser storage, not repository content.
 
 Instagram focus is scoped to the Home route and targets feed articles and Instagram’s `story_tray` marker, excluding dialogs. SPA navigation, newly loaded posts, saved preferences, messages/notification routes and profile/post routes are covered by tests. No additional permissions are required.
+
+Instagram safety: saved click-to-hide rules (including older broad selectors) apply only on Home. They are automatically suspended on inbox, conversation, activity, profile and post routes; the picker is offered only on Home for Instagram. This prevents shared Instagram layout classes from blanking the inbox. Other websites retain hostname-wide rules.
