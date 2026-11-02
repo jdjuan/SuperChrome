@@ -11,3 +11,5 @@ button{font:inherit;font-family:inherit;font-size:12px;font-weight:650;cursor:po
 @media(prefers-reduced-motion:no-preference){button,.toggle input{transition:background-color .12s,border-color .12s}.toggle input:before{transition:left .12s}}
 
 #hide-panel h2{font-size:22px;letter-spacing:-.6px;margin-bottom:22px}#hide-panel hr{margin:15px 0}.brand{padding:20px 24px}.workspace{max-height:470px}.toggle input{appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;accent-color:var(--accent);border-radius:3px}.toggle input:before{display:none}#restore-hidden:disabled{display:none}
+
+.site-context{align-items:flex-start;line-height:1.5}.site-dot{margin-top:5px}#current-site{white-space:normal;overflow:visible}.toggle{justify-content:flex-start}.toggle span{flex:1}#guard-panel .toggle{margin:0 0 15px}
