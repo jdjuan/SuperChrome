@@ -1,6 +1,7 @@
-(() => {
+(async () => {
   if(globalThis.superChromeYouTubeRecovery)return;
   globalThis.superChromeYouTubeRecovery=true;
+  try{if(!await navigator.brave?.isBrave())return;}catch{return;}
   const requested=new Set();let enabled=true,pending;
   function videoId(){const url=new URL(location.href);return url.pathname==='/watch'?url.searchParams.get('v'):url.pathname.match(/^\/live\/([\w-]+)/)?.[1];}
   function visible(element){

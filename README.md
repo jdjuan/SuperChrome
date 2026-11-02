@@ -108,3 +108,7 @@ The visual system uses a blue/slate palette, compact native sans-serif typograph
 3.0.2 uses the tool names Hide, Save, Stats and Ads, with concise action labels throughout. Ads is popup blocking: Cuevana/Cineb are on by default, other sites are opt-in. Its master checkbox pauses/resumes blocking on enabled sites; it does not enable blocking on every website.
 
 3.1 navigation: Feed, Save, Stats, Films and Brave. The header shows a concise description of the selected tool. Feed lists Instagram, X and LinkedIn; YouTube recovery has its own Brave tab with a video icon. Checkboxes precede labels. The picker uses W for a larger container, S for a smaller one, and Esc to cancel.
+
+## Brave playback recovery scope
+
+The user-facing feature is Playback recovery, intended only for Brave. It checks Brave’s `navigator.brave.isBrave()` API and stays inactive in Chrome or when Brave detection is unavailable. For reviewer documentation: its precise trigger remains a visible YouTube ad-blocker enforcement warning; it performs one ordinary page reload per video per tab. It does not remove warnings, disable Shields or alter ads. This behavior must be disclosed accurately in any Store submission. Earlier references to running this feature in Chrome are superseded.
