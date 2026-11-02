@@ -2,7 +2,7 @@
   if(globalThis.SuperChromeTheme)return;
   const palettes={
     light:{surface:'#ffffff',text:'#182238',muted:'#526078',button:'#edf1f8',border:'#bdc8da',accent:'#294cc7'},
-    dark:{surface:'#171b24',text:'#f1f3f8',muted:'#b3bdd0',button:'#293243',border:'#65748c',accent:'#cbb7ff'}
+    dark:{surface:'#1c2940',text:'#eef3ff',muted:'#b9c6dd',button:'#293346',border:'#65748c',accent:'#aec3ff'}
   };
   function rgba(value){const match=value?.match(/^rgba?\(([^)]+)\)$/);if(!match)return null;const parts=match[1].split(/[,\s/]+/).filter(Boolean).map(Number);return parts.length>=3?[...parts.slice(0,3),parts[3]??1]:null;}
   function mode(host){
@@ -23,7 +23,7 @@
   }
   const css=`
     .canvas,section,.pill,.bar{color:var(--sc-text,#182238);background:var(--sc-surface,#fff);color-scheme:inherit}
-    .canvas{border-radius:20px}.canvas h1,h2{color:var(--sc-text,#182238)}
+    .canvas{border-radius:18px}.canvas .mark{background:var(--sc-accent,#294cc7)}.canvas h1,h2{color:var(--sc-text,#182238)}
     .canvas p{color:var(--sc-muted,#526078)}
     button{color:var(--sc-text,#182238);background:var(--sc-button,#edf1f8);border:1px solid var(--sc-border,#bdc8da)}
     button:hover{background:var(--sc-button,#edf1f8);border-color:var(--sc-accent,#294cc7)}

@@ -96,3 +96,9 @@ LinkedIn 2.7.1 compatibility: the live account uses a `data-testid="mainFeed"` l
 Theme regression tests cover all four site/OS light-dark combinations, nested/translucent backgrounds, runtime site changes, and at least 4.5:1 normal-text contrast for message, secondary copy and button colors. Existing integration tests remain passing. Browser appearance after loading version 2.8.0 is not yet visually verified.
 
 LinkedIn 2.8.1 also hides `role="progressbar"` indicators inside `mainFeed` while focus is active. These selectors come from the live feed’s SVG loaders. Dialog and messaging loaders are excluded; feed loaders return during timed breaks or when focus is disabled. Regression tests cover all three states and dynamically inserted loaders.
+
+## Popup design (3.0)
+
+The popup is a 440px personal toolbox with a vertical, keyboard-accessible tool rail and one scrolling workspace. Page tools opens first on ordinary websites, Save on YouTube, Reels on Facebook, and Guard on its default protected sites. Contextual website settings lead the Page view. The rail and workspace scroll independently to accommodate future features without adding crowded horizontal tabs. New tools need a tab with `aria-controls` and a corresponding panel; navigation discovers tabs from the DOM and does not rely on positional indices.
+
+The visual system uses a blue/slate palette, compact native sans-serif typography, explicit light/dark surfaces, accessible focus states and toggle controls. The page overlays use the coordinated shared palette. Frontend Design from anthropics/skills guided the redesign. Both popup themes were reviewed in a local browser preview using mock extension APIs; all existing integration tests and new keyboard/context-navigation checks pass. Extension reload in Chrome/Brave is still needed to activate this version.
