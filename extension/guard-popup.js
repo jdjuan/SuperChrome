@@ -18,11 +18,11 @@ const reload = find('reload');
     const { sites = {} } = await chrome.storage.local.get('sites');
     sites[host] = site.checked;
     await chrome.storage.local.set({ sites });
-    status.textContent = site.checked ? 'Protection saved for this hostname. Reload the page for best results.' : 'Protection off for this hostname.';
+    status.textContent = site.checked ? 'Saved. Reload page.' : 'Off for this site.';
   });
   globalToggle.addEventListener('change', async () => {
     await chrome.storage.local.set({ enabled: globalToggle.checked });
-    status.textContent = globalToggle.checked ? 'Popup Guard enabled.' : 'All protection paused.';
+    status.textContent = globalToggle.checked ? 'Enabled.' : 'Paused.';
   });
   reload.addEventListener('click', () => chrome.tabs.reload(tab.id));
 })().catch(() => { status.textContent = 'Could not read this tab. Close and reopen this panel.'; });
