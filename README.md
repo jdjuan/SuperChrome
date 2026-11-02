@@ -4,6 +4,7 @@ A personal Chrome extension combining video downloads, Facebook reel details, an
 
 ## Features
 
+- **Instagram focus:** hides Home feed posts and the top stories tray by default on Instagram. Messages, notifications, profiles and individual posts remain available. Switch it off under **Hide → Hide Instagram home feed & stories**. The preference persists separately in each browser.
 - **Hide:** choose **Hide → Pick element to hide**, point at an element, and click. Use ↑ to select its parent container, ↓ to select a child, and Esc to cancel. Choices persist per hostname across future visits and apply to dynamically inserted matching elements. Restore individual items or all items from the Hide tab. Rules stay local to each browser and may need to be picked again if a website changes its layout. Cross-origin popups can be hidden by selecting their enclosing iframe/container; content inside closed shadow roots is not individually selectable.
 - **Download:** save YouTube, Instagram and X videos to `~/Downloads/Local Videos` through a local yt-dlp/FFmpeg helper. Downloads continue after the popup closes.
 - **Reel details:** inspect available Facebook video dates and views, or open a reel in Watch. Facebook can omit metadata or redirect back to Reels.
@@ -53,3 +54,5 @@ Original individual extension folders remain unchanged for rollback. Disable/rem
 Juan authorizes automatic commits and pushes of verified updates to this extension. See `AGENTS.md`. Existing permissions cover the Hide feature; no permission expansion was added.
 
 Hide was checked in Chrome on LinkedIn: the Agree & Join overlay, Google account prompt, and top Sign in button were selected through the picker. Saved overlay rules persisted after refreshing the page. Chrome and Brave were reloaded to version 2.1.0. User-specific hiding rules are browser storage, not repository content.
+
+Instagram focus is scoped to the Home route and targets feed articles and Instagram’s `story_tray` marker, excluding dialogs. SPA navigation, newly loaded posts, saved preferences, messages/notification routes and profile/post routes are covered by tests. No additional permissions are required.
