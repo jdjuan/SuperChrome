@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [

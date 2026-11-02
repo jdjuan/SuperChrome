@@ -10,7 +10,7 @@
     try { await chrome.storage.local.set({linkedinRevealUntil:Date.now()+minutes*60000}); }
     catch { const status=message?.shadowRoot.querySelector('[role="status"]');if(status)setText(status,'Could not start the timer. Try again.'); }
   }
-  const selector = `html[${attribute}] main :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
+  const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
   function update() {
     if (!document.documentElement) return;
     lastUrl = location.href;
@@ -33,11 +33,11 @@
     if (!style?.isConnected) {
       style = document.createElement('style');
       style.dataset.superchrome = 'linkedin-focus';
-      style.textContent = `${selector}, html[${attribute}] main [${contentAttribute}] { display: none !important; }`;
+      style.textContent = `${selector}, html[${attribute}] :is(main, [role="main"]) [${contentAttribute}] { display: none !important; }`;
       document.documentElement.append(style);
     }
     if (!active) { message?.remove(); return; }
-    const main = document.querySelector('main');
+    const main = document.querySelector('main, [role="main"]');
     if (!main) return;
     // Only the feed's scrolling region, never main, the composer, navigation,
     // messaging overlays or a modal preview. Individual-post routes are excluded.
@@ -61,7 +61,15 @@
       shadow.querySelectorAll('[data-minutes]').forEach(button=>{button.onclick=()=>reveal(Number(button.dataset.minutes));});
     }
     setText(message.shadowRoot.querySelector('h1'),revealUntil>0 && revealUntil<=Date.now() ? 'Time’s up. LinkedIn will survive.' : 'You have better things to do.');
-    if (message.parentElement !== main) main.append(message);
+    const feed = main.querySelector('[data-testid="mainFeed"]');
+    if (feed) {
+      // Current LinkedIn puts the composer and sort controls in this list too.
+      // Insert before the first post's lazy-mount branch, without hiding the list.
+      let firstPost = feed.querySelector('[componentkey^="update-card-focus"]');
+      while(firstPost?.parentElement && firstPost.parentElement!==feed)firstPost=firstPost.parentElement;
+      if(firstPost && (message.parentElement!==feed || message.nextSibling!==firstPost))feed.insertBefore(message,firstPost);
+      else if(!firstPost && message.parentElement!==feed)feed.append(message);
+    } else if (message.parentElement !== main) main.append(message);
   }
   chrome.storage.local.get({linkedinFocus:true,linkedinRevealUntil:0}).then(settings=>{enabled=settings.linkedinFocus!==false;revealUntil=Number(settings.linkedinRevealUntil)||0;update();}).catch(()=>{});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.linkedinFocus)enabled=changes.linkedinFocus.newValue!==false;if(changes.linkedinRevealUntil)revealUntil=Number(changes.linkedinRevealUntil.newValue)||0;if(changes.linkedinFocus||changes.linkedinRevealUntil)update();});
