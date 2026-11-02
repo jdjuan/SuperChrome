@@ -23,11 +23,13 @@
         timer=document.createElement('section');timer.dataset.superchrome='instagram-timer';
         const shadow=timer.attachShadow({mode:'open'});
         shadow.innerHTML='<style>:host{position:fixed!important;bottom:24px!important;right:24px!important;z-index:2147483646!important;font:14px system-ui!important}.pill{display:flex;align-items:center;gap:18px;padding:12px 16px;border:1px solid #ffffff25;border-radius:999px;background:#20212c;color:#f2f1f7;box-shadow:0 8px 32px #0003}button{background:none;border:0;color:#cab5ff;font:600 13px system-ui;cursor:pointer;padding:6px}button:focus-visible{outline:2px solid #cab5ff;border-radius:4px}</style><div class="pill"><span role="timer" aria-label="Instagram time remaining"></span><button>Hide now</button></div>';
+        globalThis.SuperChromeTheme?.attach(timer,shadow);
         shadow.querySelector('button').onclick=async()=>{try{await chrome.storage.local.set({instagramRevealUntil:Date.now()});}catch{setText(shadow.querySelector('button'),'Try again');}};
       }
       const seconds=Math.max(0,Math.ceil((revealUntil-Date.now())/1000));
       setText(timer.shadowRoot.querySelector('[role=timer]'),`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} left`);
       if(!timer.isConnected)document.documentElement.append(timer);
+      globalThis.SuperChromeTheme?.apply(timer);
     } else timer?.remove();
     document.documentElement.toggleAttribute(attribute, active);
     if (!style?.isConnected) {
@@ -62,10 +64,12 @@
         .limits{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}button{border:1px solid #8883;border-radius:999px;padding:11px 22px;background:#8881;color:inherit;font:600 15px system-ui;cursor:pointer}button:hover{background:#bba5f522;border-color:#bba5f5}button:focus-visible{outline:2px solid #bba5f5;outline-offset:3px}[role=status]:empty{display:none}
         @media(prefers-color-scheme:light){.canvas{color:#222333}p{color:#777989}}
       </style><div class="canvas"><div class="mark" aria-hidden="true"></div><h1>You have better things to do.</h1><p>But if not, set a limit:</p><div class="limits"><button data-minutes="1">1 min</button><button data-minutes="3">3 min</button><button data-minutes="5">5 min</button></div><p role="status"></p></div>`;
+      globalThis.SuperChromeTheme?.attach(message,shadow);
       shadow.querySelectorAll('[data-minutes]').forEach(button=>{button.onclick=()=>reveal(Number(button.dataset.minutes));});
     }
     setText(message.shadowRoot.querySelector('h1'),revealUntil>0 && revealUntil<=Date.now() ? 'Time’s up. Instagram will survive.' : 'You have better things to do.');
     if (message.parentElement !== main) main.append(message);
+    globalThis.SuperChromeTheme?.apply(message);
   }
   chrome.storage.local.get({instagramFocus:true,instagramRevealUntil:0}).then(settings=>{enabled=settings.instagramFocus!==false;revealUntil=Number(settings.instagramRevealUntil)||0;update();}).catch(()=>{});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.instagramFocus)enabled=changes.instagramFocus.newValue!==false;if(changes.instagramRevealUntil)revealUntil=Number(changes.instagramRevealUntil.newValue)||0;if(changes.instagramFocus||changes.instagramRevealUntil)update();});

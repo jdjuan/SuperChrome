@@ -63,7 +63,7 @@
     host.style.cssText='all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;display:block!important;';
     const shadow = host.attachShadow({mode:'closed'});
     shadow.innerHTML='<style>:host{font:14px system-ui}.glass{position:fixed;inset:0;cursor:crosshair}.box{position:fixed;pointer-events:none;border:2px solid #254ee5;background:#254ee522;box-sizing:border-box}.bar{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#17213a;color:white;padding:12px 16px;border-radius:12px;box-shadow:0 4px 20px #0004;font:14px/1.5 system-ui;max-width:85vw}button{margin-left:12px;padding:6px 10px;border:0;border-radius:6px;cursor:pointer}</style><div class="glass"></div><div class="box"></div><div class="bar" role="status">Click to hide · ↑ select parent · ↓ select child · Esc cancel<button>Cancel</button></div>';
-    document.documentElement.append(host); picker=host;
+    document.documentElement.append(host); picker=host;globalThis.SuperChromeTheme?.attach(host,shadow);
     const box=shadow.querySelector('.box'), bar=shadow.querySelector('.bar'); let target,leaf,saving=false,adjusted=false;
     const hitAt=event=>{host.style.setProperty('pointer-events','none','important');const hit=document.elementFromPoint(event.clientX,event.clientY);host.style.removeProperty('pointer-events');return hit;};
     const paint=()=>{if(!validTarget(target)){box.hidden=true;return;}box.hidden=false;const r=target.getBoundingClientRect();Object.assign(box.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});};

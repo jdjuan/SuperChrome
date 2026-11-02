@@ -24,7 +24,7 @@ find('watch').addEventListener('click', async () => {
 find('inspect').addEventListener('click', async () => {
   try {
     const {tab,id} = await currentVideo();
-    const [result] = await chrome.scripting.executeScript({target:{tabId:tab.id},files:['inspect.js']});
+    const [result] = await chrome.scripting.executeScript({target:{tabId:tab.id},files:['theme.js','inspect.js']});
     const details = result.result;
     if (!details || details.id !== id) throw new Error('The video changed. Open the extension again to retry.');
     status.textContent = details.text;

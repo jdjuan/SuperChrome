@@ -88,3 +88,9 @@ The feature uses existing permissions. [Chrome storage documentation](https://de
 Local DOM tests cover feed selectors, dynamically inserted posts, dialog/chat/composer exclusions, timed breaks, refresh persistence and route changes. Live verification in a logged-in LinkedIn feed is pending. The feature uses existing permissions.
 
 LinkedIn 2.7.1 compatibility: the live account uses a `data-testid="mainFeed"` list and `componentkey="update-card-focus…"` cards, with none of the older feed classes. The list also contains the composer and sort controls, so only its post cards are hidden; the focus message is inserted before the first post’s lazy-mount wrapper. Read-only live inspection matched eight post cards and no composer or messaging overlay. Regression tests cover this layout and legacy markup. Rendering after extension reload is still pending.
+
+## Light and dark mode
+
+`extension/theme.js` provides a shared palette for focus messages, countdowns, the element picker and Facebook details panel. It reads the actual ancestor backgrounds (including transparent layers) rather than assuming the website follows the OS theme. These components own paired text and background colors, preventing light-on-light text even if theme detection falls back. Instagram/X/LinkedIn focus components re-evaluate the site theme while active. The extension popup owns its light/dark palette and form-control colors via system color preference. New UI must follow the readability requirement in `AGENTS.md`.
+
+Theme regression tests cover all four site/OS light-dark combinations, nested/translucent backgrounds, runtime site changes, and at least 4.5:1 normal-text contrast for message, secondary copy and button colors. Existing integration tests remain passing. Browser appearance after loading version 2.8.0 is not yet visually verified.

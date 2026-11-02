@@ -54,6 +54,6 @@
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>host.remove();
   const heading=document.createElement('h2');heading.textContent='Facebook Reel Details';
   const body=document.createElement('p');body.textContent=text;
-  panel.append(close,heading,body);shadow.append(style,panel);document.documentElement.append(host);
+  panel.append(close,heading,body);shadow.append(style,panel);document.documentElement.append(host);globalThis.SuperChromeTheme?.attach(host,shadow);
   return {id,text};
 })();

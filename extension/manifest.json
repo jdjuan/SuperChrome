@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "2.7.1",
+  "version": "2.8.0",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -54,6 +54,7 @@
         "https://*/*"
       ],
       "js": [
+        "theme.js",
         "hide-elements.js"
       ],
       "run_at": "document_start"
@@ -64,6 +65,7 @@
         "https://instagram.com/*"
       ],
       "js": [
+        "theme.js",
         "instagram-focus.js"
       ],
       "run_at": "document_start"
@@ -76,6 +78,7 @@
         "https://www.twitter.com/*"
       ],
       "js": [
+        "theme.js",
         "x-focus.js"
       ],
       "run_at": "document_start"
@@ -97,6 +100,7 @@
         "https://linkedin.com/*"
       ],
       "js": [
+        "theme.js",
         "linkedin-focus.js"
       ],
       "run_at": "document_start"
