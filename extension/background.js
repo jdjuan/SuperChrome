@@ -32,3 +32,5 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  port.postMessage({action:'download',url:message.url});reply({ok:true});
 });
 importScripts('hide-background.js');
+
+importScripts('youtube-recovery-background.js');

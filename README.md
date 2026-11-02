@@ -70,3 +70,13 @@ On X (and legacy twitter.com URLs), **Hide → Hide X home feed** independently 
 X selectors are covered by local DOM integration tests; this release has not been verified in a live X account.
 
 X structural selector reference: [Minimal Theme’s maintained selector definitions](https://github.com/typefully/minimal-twitter/blob/main/content-scripts/src/selectors.js). Feed posts are matched by `data-testid` rather than requiring a specific HTML tag.
+
+## YouTube warning recovery
+
+On YouTube, **Hide → Retry YouTube ad-blocker warning once** enables a single automatic reload when a visible player warning matches the supplied ad-blocker warning. It is enabled by default in both Brave and Chrome. If Chrome keeps showing the warning, SuperChrome leaves it alone after that one retry. It does not change Shields, ad-blocker settings, ads, or YouTube authentication.
+
+A background worker records the video ID in `chrome.storage.session` before calling `tabs.reload`. The limit is per video, per tab, during the extension session, and survives page reloads and worker restarts. Returning to an already retried video does not reset it; opening a different video permits one retry for that video. Closing the tab clears its record. Restarting the browser or reloading the extension clears session storage. If the retry record cannot be saved, no reload occurs. The handler rechecks the current video before reloading and ignores stale or subframe requests.
+
+Detection is limited to watch/live video pages and visible YouTube player error/enforcement elements with matching warning text (English, plus common Spanish headline forms). Hidden templates, ordinary video errors and comments are ignored. YouTube may change its markup or wording. Automated tests cover once-only behavior, concurrent requests, new documents/workers, SPA navigation, false positives and storage failure; live reproduction in Brave is not verified.
+
+The feature uses existing permissions. [Chrome storage documentation](https://developer.chrome.com/docs/extensions/reference/api/storage) and [Tabs API documentation](https://developer.chrome.com/docs/extensions/reference/api/tabs) describe the session state and reload APIs used here.
