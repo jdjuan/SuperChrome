@@ -13,3 +13,4 @@ button{font:inherit;font-family:inherit;font-size:12px;font-weight:650;cursor:po
 #hide-panel h2{font-size:22px;letter-spacing:-.6px;margin-bottom:22px}#hide-panel hr{margin:15px 0}.brand{padding:20px 24px}.workspace{max-height:470px}.toggle input{appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;accent-color:var(--accent);border-radius:3px}.toggle input:before{display:none}#restore-hidden:disabled{display:none}
 
 .site-context{align-items:flex-start;line-height:1.5}.site-dot{margin-top:5px}#current-site{white-space:normal;overflow:visible}.toggle{justify-content:flex-start}.toggle span{flex:1}#guard-panel .toggle{margin:0 0 15px}
+#helper-setup{padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;margin:0 0 16px}#helper-setup .section-heading{margin:0}#dismiss-helper{width:25px;padding:1px;font-size:19px;margin:0;background:transparent;border:0}#helper-setup p{margin:8px 0}#helper-setup-status:empty{display:none}

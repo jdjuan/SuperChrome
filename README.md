@@ -112,3 +112,9 @@ The visual system uses a blue/slate palette, compact native sans-serif typograph
 ## Brave playback recovery scope
 
 The user-facing feature is Playback recovery, intended only for Brave. It checks Brave’s `navigator.brave.isBrave()` API and stays inactive in Chrome or when Brave detection is unavailable. For reviewer documentation: its precise trigger remains a visible YouTube ad-blocker enforcement warning; it performs one ordinary page reload per video per tab. It does not remove warnings, disable Shields or alter ads. This behavior must be disclosed accurately in any Store submission. Earlier references to running this feature in Chrome are superseded.
+
+## AI-assisted helper setup (3.2)
+
+Save pings the native host on every popup opening. If it cannot connect, setup appears first with Copy Prompt, Check again and a close button. Closing it reveals a Set up helper link; it is not permanently suppressed. Downloads stay disabled until a successful ping. An installed helper skips the prompt automatically. The new helper ping also checks for yt-dlp and FFmpeg.
+
+The copied prompt includes the actual runtime extension ID, complete helper source, dependency installation, stable OS-specific launchers, Chrome/Brave native host registration, framed ping verification and maintenance/uninstall guidance. It does not depend on access to the private GitHub repository. The source embedded in `extension/helper-setup.js` must be regenerated when `helper/host.py` changes; the embedded shebang is portable and the prompt requires a launcher with absolute executable paths. Python locates yt-dlp/FFmpeg through PATH rather than fixed Homebrew tool paths. Juan's existing host shebang remains unchanged. Windows and Linux setup instructions are provided for the user's AI to implement and verify; only the current Mac host ping was executed locally.
