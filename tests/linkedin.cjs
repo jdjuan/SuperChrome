@@ -1,6 +1,17 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
 const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8'),tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{
+ // Exercise the pre-script stylesheet and a deliberately unresolved settings read.
+ const boot=new JSDOM('<html><head></head><body><main><div class="scaffold-finite-scroll">Post</div><div contenteditable="true">Compose</div></main></body></html>',{url:'https://www.linkedin.com/feed/',runScripts:'outside-only'}),bw=boot.window;
+ const bootStyle=bw.document.createElement('style');bootStyle.textContent=read('linkedin-startup.css');bw.document.head.append(bootStyle);
+ const bootPost=bw.document.querySelector('.scaffold-finite-scroll');
+ assert.equal(bw.getComputedStyle(bootPost).display,'none','manifest CSS hides posts before JavaScript');
+ assert.notEqual(bw.getComputedStyle(bw.document.querySelector('[contenteditable]')).display,'none');
+ let resolveSettings;bw.setInterval=()=>{};bw.chrome={storage:{local:{get:()=>new Promise(resolve=>resolveSettings=resolve)},onChanged:{addListener:()=>{}}}};
+ bw.eval(read('linkedin-focus.js'));
+ assert.equal(bw.getComputedStyle(bootPost).display,'none','synchronous route rules cover slow storage');
+ resolveSettings({linkedinFocus:false,linkedinRevealUntil:0});await tick();
+ assert.notEqual(bw.getComputedStyle(bootPost).display,'none','disabled focus restores content after settings arrive');
  let now=1000000;const store={linkedinFocus:true,linkedinRevealUntil:0,instagramFocus:false,xRevealUntil:999999999},listeners=[];
  function page(url='https://www.linkedin.com/feed/'){
  const dom=new JSDOM('<html><body><header>Messaging Notifications Jobs</header><main><div contenteditable="true">Start a post</div><div class="scaffold-finite-scroll"><div class="scaffold-finite-scroll__content"><div class="feed-shared-update-v2">Post</div><div data-urn="urn:li:activity:123">Post</div></div><div role="progressbar">Loading</div></div><div role="dialog"><div class="feed-shared-update-v2">Modal post</div></div></main><div class="msg-overlay-container">Chat</div></body></html>',{url,runScripts:'outside-only'}),w=dom.window;let interval;

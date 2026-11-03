@@ -39,6 +39,8 @@
       style.textContent = `${selector}, html[${attribute}] :is(main, [role="main"]) [${contentAttribute}] { display: none !important; }`;
       document.documentElement.append(style);
     }
+    // The manifest stylesheet covers the first paint until route-aware rules exist.
+    document.documentElement.setAttribute('data-superchrome-linkedin-initialized', '');
     if (!active) { message?.remove(); return; }
     const main = document.querySelector('main, [role="main"]');
     if (!main) return;
@@ -76,6 +78,7 @@
     } else if (message.parentElement !== main) main.append(message);
     globalThis.SuperChromeTheme?.apply(message);
   }
+  update();
   chrome.storage.local.get({linkedinFocus:true,linkedinRevealUntil:0}).then(settings=>{enabled=settings.linkedinFocus!==false;revealUntil=Number(settings.linkedinRevealUntil)||0;update();}).catch(()=>{});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.linkedinFocus)enabled=changes.linkedinFocus.newValue!==false;if(changes.linkedinRevealUntil)revealUntil=Number(changes.linkedinRevealUntil.newValue)||0;if(changes.linkedinFocus||changes.linkedinRevealUntil)update();});
   // Reconcile new Home layouts and loading containers as LinkedIn replaces DOM.
