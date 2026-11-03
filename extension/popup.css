@@ -14,3 +14,5 @@ button{font:inherit;font-family:inherit;font-size:12px;font-weight:650;cursor:po
 
 .site-context{align-items:flex-start;line-height:1.5}.site-dot{margin-top:5px}#current-site{white-space:normal;overflow:visible}.toggle{justify-content:flex-start}.toggle span{flex:1}#guard-panel .toggle{margin:0 0 15px}
 #helper-setup{padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;margin:0 0 16px}#helper-setup .section-heading{margin:0}#dismiss-helper{width:25px;padding:1px;font-size:19px;margin:0;background:transparent;border:0}#helper-setup p{margin:8px 0}#helper-setup-status:empty{display:none}
+
+.updates{margin:12px 24px 18px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}.updates p{flex:1;margin:0;padding:0;background:none;min-width:180px}.updates button{width:auto;margin:0;padding:6px 9px;font-size:11px}.updates .primary{width:100%}
