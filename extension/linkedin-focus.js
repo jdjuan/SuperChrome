@@ -14,7 +14,8 @@
   function update() {
     if (!document.documentElement) return;
     lastUrl = location.href;
-    const home = ['/feed','/feed/'].includes(location.pathname);
+    const highlighted = new URL(location.href).searchParams.get('highlightedUpdateUrn');
+    const home = ['/feed','/feed/'].includes(location.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
     const revealing = enabled && home && revealUntil > Date.now();
     const active = enabled && home && !revealing;
     document.documentElement.toggleAttribute('data-superchrome-linkedin-revealed', revealing);

@@ -4,6 +4,7 @@ const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8');cons
  const store={},listeners=[];let handler,reply;
  const context={URL,crypto:require('node:crypto').webcrypto,chrome:{runtime:{onMessage:{addListener:f=>handler=f}},storage:{local:{get:async key=>({[key]:store[key]}),set:async data=>{for(const [key,value]of Object.entries(data)){store[key]=structuredClone(value);listeners.forEach(fn=>fn({[key]:{newValue:value}},'local'));}}}}}};vm.createContext(context);vm.runInContext(read('hide-background.js'),context);
  function page(url='https://www.linkedin.com/'){const dom=new JSDOM('<html><head></head><body><nav><a href="/login">Sign in</a></nav><div id="credential_picker_container"><iframe src="https://accounts.google.com/gsi/iframe"></iframe></div><main>Keep me</main></body></html>',{url,runScripts:'outside-only'}),w=dom.window;let shadow,message;
+ w.setInterval=()=>{};
  w.CSS={escape:s=>s.replace(/[^a-zA-Z0-9_-]/g,c=>'\\'+c)};
  const attach=w.Element.prototype.attachShadow;w.Element.prototype.attachShadow=function(options){shadow=attach.call(this,options);return shadow;};
  w.chrome={storage:{local:context.chrome.storage.local,onChanged:{addListener:f=>listeners.push(f)}},runtime:{onMessage:{addListener:f=>message=f},sendMessage:msg=>new Promise(resolve=>handler(msg,{tab:{url},frameId:0},resolve))}};

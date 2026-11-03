@@ -4,7 +4,8 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 
 ## Tools
 
-- **Feed:** hide Instagram Home posts, stories and suggestions, X Home and LinkedIn Home feeds. Messages and notifications stay available. Reveal feeds for 1, 3 or 5 minutes, then hide them again.
+- **Feed:** hide Instagram Home posts, stories and suggestions, X Home and LinkedIn Home feeds. Messages and notifications stay available. Reveal feeds for 1, 3 or 5 minutes, then hide them again. Specific LinkedIn post URLs, including highlighted posts under `/feed/`, remain visible; saved element hides are suspended while viewing a specific post.
+- **LinkedIn suggestions:** a separate checkbox hides notification cards explicitly marked `REACTIONS_BY_YOUR_NETWORK`, including activity by connections on someone else’s posts. Personal reactions/comments, mentions, and unknown types remain visible. This conservative first filter does not guess from quoted text. A local summary lets you show hidden cards again. It does not delete notifications, mark them read, or alter LinkedIn’s server-side bell count.
 - **Hide an element:** pick something on a website and remember it. W selects a larger container, S a smaller one, Esc cancels. Restore saved rules in Feed. Rules may need updating when a site changes.
 - **Save:** download supported YouTube, Instagram and X videos using the optional local Python, yt-dlp and FFmpeg helper. Download only media you have permission to save. Downloads go to `~/Downloads/Local Videos`.
 - **Stats:** inspect available Facebook reel dates/views. Some reels do not expose metadata.

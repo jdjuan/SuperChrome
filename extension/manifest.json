@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -101,7 +101,8 @@
       ],
       "js": [
         "theme.js",
-        "linkedin-focus.js"
+        "linkedin-focus.js",
+        "linkedin-notifications.js"
       ],
       "run_at": "document_start"
     }
