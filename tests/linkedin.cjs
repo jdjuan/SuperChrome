@@ -12,6 +12,25 @@ const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8'),tick
  assert.equal(bw.getComputedStyle(bootPost).display,'none','synchronous route rules cover slow storage');
  resolveSettings({linkedinFocus:false,linkedinRevealUntil:0});await tick();
  assert.notEqual(bw.getComputedStyle(bootPost).display,'none','disabled focus restores content after settings arrive');
+ // A cold tab briefly exposes the legacy /preload/ frame before the modern feed.
+ const parent=new JSDOM('<iframe src="/preload/?_bprMode=vanilla"></iframe>',{url:'https://www.linkedin.com/feed/',runScripts:'outside-only'});
+ const fw=parent.window.document.querySelector('iframe').contentWindow;
+ fw.document.open();fw.document.write('<html><body><main><div class="scaffold-finite-scroll"><div class="feed-shared-update-v2">Legacy post</div></div></main></body></html>');fw.document.close();
+ let frameChange;fw.setInterval=()=>{};fw.chrome={storage:{local:{get:async defaults=>defaults},onChanged:{addListener:fn=>frameChange=fn}}};
+ fw.eval(read('linkedin-focus.js'));await tick();
+ const legacy=fw.document.querySelector('.scaffold-finite-scroll');
+ assert.equal(fw.getComputedStyle(legacy).display,'none','preload inherits parent Home route');
+ frameChange({linkedinFocus:{newValue:false}},'local');assert.notEqual(fw.getComputedStyle(legacy).display,'none');
+ frameChange({linkedinFocus:{newValue:true},linkedinRevealUntil:{newValue:Date.now()+60000}},'local');assert.notEqual(fw.getComputedStyle(legacy).display,'none','timed break reaches preload frame');
+ frameChange({linkedinRevealUntil:{newValue:0}},'local');assert.equal(fw.getComputedStyle(legacy).display,'none');
+ for(const route of ['/notifications/','/feed/?highlightedUpdateUrn=urn:li:activity:123','/feed/update/urn:li:activity:123/']){
+  parent.window.history.replaceState({},'',route);fw.dispatchEvent(new fw.Event('focus'));assert.notEqual(fw.getComputedStyle(legacy).display,'none',route);
+ }
+ const manifest=JSON.parse(read('manifest.json'));
+ const focusScript=manifest.content_scripts.find(s=>s.js.includes('linkedin-focus.js'));
+ assert.equal(focusScript.all_frames,true);assert.equal(focusScript.run_at,'document_start');assert.ok(focusScript.css.includes('linkedin-startup.css'));
+ assert.equal(manifest.content_scripts.find(s=>s.js.includes('linkedin-notifications.js')).all_frames,undefined,'notification controls stay top-frame only');
+ await tick();
  let now=1000000;const store={linkedinFocus:true,linkedinRevealUntil:0,instagramFocus:false,xRevealUntil:999999999},listeners=[];
  function page(url='https://www.linkedin.com/feed/'){
  const dom=new JSDOM('<html><body><header>Messaging Notifications Jobs</header><main><div contenteditable="true">Start a post</div><div class="scaffold-finite-scroll"><div class="scaffold-finite-scroll__content"><div class="feed-shared-update-v2">Post</div><div data-urn="urn:li:activity:123">Post</div></div><div role="progressbar">Loading</div></div><div role="dialog"><div class="feed-shared-update-v2">Modal post</div></div></main><div class="msg-overlay-container">Chat</div></body></html>',{url,runScripts:'outside-only'}),w=dom.window;let interval;

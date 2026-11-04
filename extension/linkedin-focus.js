@@ -2,6 +2,14 @@
   if (globalThis.superChromeLinkedInFocus) return;
   globalThis.superChromeLinkedInFocus = true;
   if (!['linkedin.com','www.linkedin.com'].includes(location.hostname)) return;
+  // LinkedIn briefly displays its legacy preload frame on fresh-tab opens.
+  // Its /preload/ URL is not the route the user is viewing.
+  function routeUrl() {
+    if (window !== window.top && location.pathname.startsWith('/preload/')) {
+      try { return new URL(window.top.location.href); } catch { /* Cross-origin frame. */ }
+    }
+    return new URL(location.href);
+  }
   const attribute = 'data-superchrome-linkedin-focus';
   const contentAttribute = 'data-superchrome-linkedin-home-content';
   let enabled = true, style, lastUrl, message, timer, revealUntil = 0;
@@ -14,8 +22,9 @@
   function update() {
     if (!document.documentElement) return;
     lastUrl = location.href;
-    const highlighted = new URL(location.href).searchParams.get('highlightedUpdateUrn');
-    const home = ['/feed','/feed/'].includes(location.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
+    const route = routeUrl();
+    const highlighted = route.searchParams.get('highlightedUpdateUrn');
+    const home = ['/feed','/feed/'].includes(route.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
     const revealing = enabled && home && revealUntil > Date.now();
     const active = enabled && home && !revealing;
     document.documentElement.toggleAttribute('data-superchrome-linkedin-revealed', revealing);
