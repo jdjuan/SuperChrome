@@ -1,0 +1,33 @@
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
+const read=f=>fs.readFileSync('extension/'+f,'utf8'),tick=()=>new Promise(r=>setImmediate(r));
+const fixture='<html><body><ytd-browse page-subtype="home">Home</ytd-browse><ytd-browse page-subtype="subscriptions">Subscriptions</ytd-browse><ytd-search>Search</ytd-search><ytd-reel-shelf-renderer>Shorts</ytd-reel-shelf-renderer><ytd-guide-entry-renderer><a href="/shorts/">Shorts</a></ytd-guide-entry-renderer><ytd-watch-flexy><video></video><div id="related">Related</div><ytd-playlist-panel-renderer>Playlist</ytd-playlist-panel-renderer><ytd-comments>Comments</ytd-comments><iframe title="Live chat"></iframe></ytd-watch-flexy></body></html>';
+(async()=>{
+ const d=new JSDOM(fixture,{url:'https://www.youtube.com/',runScripts:'outside-only'}),w=d.window;
+ let change,resolve;
+ w.chrome={storage:{local:{get:()=>new Promise(r=>resolve=r)},onChanged:{addListener:f=>change=f}}};
+ w.eval(read('youtube-focus.js'));resolve({youtubeFocus:{enabled:true,mode:'simple',feed:false,shorts:false,related:false}});await tick();
+ const hidden=s=>w.getComputedStyle(w.document.querySelector(s)).display==='none';
+ assert.ok(hidden('ytd-browse[page-subtype=home]'));assert.ok(hidden('ytd-reel-shelf-renderer'));assert.ok(hidden('#related'));assert.ok(hidden('ytd-guide-entry-renderer'));
+ for(const s of ['ytd-search','video','ytd-browse[page-subtype=subscriptions]','ytd-playlist-panel-renderer','ytd-comments','iframe'])assert.equal(hidden(s),false,s);
+ const set=value=>change({youtubeFocus:{newValue:value}},'local');
+ set({mode:'custom',feed:false,shorts:true,related:false});assert.equal(hidden('ytd-browse'),false);assert.ok(hidden('ytd-reel-shelf-renderer'));assert.equal(hidden('#related'),false);
+ set({mode:'custom',feed:true,shorts:false,related:true});assert.ok(hidden('ytd-browse'));assert.equal(hidden('ytd-reel-shelf-renderer'),false);assert.ok(hidden('#related'));
+ w.history.pushState({},'','/watch?v=example');const shelf=w.document.createElement('ytd-reel-shelf-renderer');w.document.body.append(shelf);assert.notEqual(w.getComputedStyle(shelf).display,'none');
+ set({enabled:false});for(const key of ['feed','shorts','related'])assert.ok(!w.document.documentElement.hasAttribute('data-sc-youtube-'+key));
+ set({mode:'simple'});assert.equal(w.getComputedStyle(shelf).display,'none','New content follows CSS gates');
+ w.document.querySelector('[data-superchrome=youtube-focus]').remove();await tick();assert.ok(hidden('#related'),'Removed stylesheet recovers');
+ w.eval(read('youtube-focus.js'));assert.equal(w.document.querySelectorAll('[data-superchrome=youtube-focus]').length,1);d.window.close();
+ // Storage changes win over a delayed initial read.
+ const race=new JSDOM(fixture,{url:'https://www.youtube.com/',runScripts:'outside-only'}),r=race.window;let initial,changed;
+ r.chrome={storage:{local:{get:()=>new Promise(res=>initial=res)},onChanged:{addListener:fn=>changed=fn}}};r.eval(read('youtube-focus.js'));changed({youtubeFocus:{newValue:{enabled:false}}},'local');initial({youtubeFocus:{enabled:true}});await tick();assert.ok(!r.document.documentElement.hasAttribute('data-sc-youtube-feed'));race.window.close();
+ const popup=new JSDOM(read('popup.html'),{runScripts:'outside-only'}),p=popup.window;let saved,fail=false,listener;
+ p.chrome={storage:{local:{get:async defaults=>defaults,set:async value=>{if(fail)throw Error('offline');saved=JSON.parse(JSON.stringify(value));}},onChanged:{addListener:fn=>listener=fn}}};p.eval(read('youtube-focus-popup.js'));await tick();
+ const mode=p.document.querySelector('#youtube-focus-mode'),custom=p.document.querySelector('#youtube-focus-custom'),feed=p.document.querySelector('#youtube-hide-feed'),master=p.document.querySelector('#youtube-focus-enabled');
+ assert.equal(custom.hidden,true);mode.value='custom';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(custom.hidden,false);
+ feed.click();await tick();assert.equal(saved.youtubeFocus.feed,false);
+ mode.value='simple';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(saved.youtubeFocus.feed,false,'Simple retains custom choices');
+ mode.value='custom';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(feed.checked,false);
+ fail=true;master.click();await tick();assert.equal(master.checked,true);assert.match(p.document.querySelector('#youtube-focus-status').textContent,/Could not save/);
+ listener({youtubeFocus:{newValue:{enabled:false,mode:'custom',related:false}}},'local');assert.equal(master.checked,false);assert.equal(p.document.querySelector('#youtube-hide-related').checked,false);popup.window.close();
+ console.log('PASS: YouTube simple/custom/off, dynamic shelves, routes, player/search/subscriptions/chat preservation, storage race, popup persistence and failure rollback.');
+})().catch(e=>{console.error(e);process.exit(1)});

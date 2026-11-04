@@ -1,10 +1,10 @@
 {
   "name": "superchrome",
-  "version": "3.6.3",
+  "version": "3.7.0",
   "private": true,
   "description": "Personal Chrome toolkit",
   "scripts": {
-    "test": "node tests/verify.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs && node tests/linkedin.cjs && node tests/theme.cjs && node tests/popup-navigation.cjs && node tests/helper-setup.cjs && node tests/updates.cjs && node tests/linkedin-notifications.cjs && node tests/instagram-images.cjs && node tests/gmail.cjs && node tests/linkedin-dark.cjs && node tests/linkedin-shadow.cjs",
+    "test": "node tests/verify.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs && node tests/youtube-focus.cjs && node tests/linkedin.cjs && node tests/theme.cjs && node tests/popup-navigation.cjs && node tests/helper-setup.cjs && node tests/updates.cjs && node tests/linkedin-notifications.cjs && node tests/instagram-images.cjs && node tests/gmail.cjs && node tests/linkedin-dark.cjs && node tests/linkedin-shadow.cjs",
     "package": "node scripts/package-release.cjs"
   },
   "devDependencies": {

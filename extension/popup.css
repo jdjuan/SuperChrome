@@ -16,3 +16,5 @@ button{font:inherit;font-family:inherit;font-size:12px;font-weight:650;cursor:po
 #helper-setup{padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;margin:0 0 16px}#helper-setup .section-heading{margin:0}#dismiss-helper{width:25px;padding:1px;font-size:19px;margin:0;background:transparent;border:0}#helper-setup p{margin:8px 0}#helper-setup-status:empty{display:none}
 
 .updates{margin:12px 24px 18px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}.updates p{flex:1;margin:0;padding:0;background:none;min-width:180px}.updates button{width:auto;margin:0;padding:6px 9px;font-size:11px}.updates .primary{width:100%}
+
+#youtube-focus-controls h3{margin-bottom:10px}#youtube-focus-controls label{margin:10px 0}#youtube-focus-mode{width:100%;padding:9px;background:var(--control);color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12px}select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
