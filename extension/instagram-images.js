@@ -53,7 +53,8 @@
       // Carousel slides outside their clipping container must not get controls.
       const x = Math.min(rect.right, innerWidth) - 22, y = Math.max(rect.top, 0) + 22;
       const hit = document.elementFromPoint?.(x, y);
-      if (hit && hit !== host && hit !== img && !img.parentElement.contains(hit)) continue;
+      const media = img.closest('._aagu') || img.parentElement;
+      if (hit && hit !== host && hit !== img && !media.contains(hit)) continue;
       found.add(img);
       let button = buttons.get(img);
       if (!button) {
