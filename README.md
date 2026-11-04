@@ -80,3 +80,7 @@ Gmail and LinkedIn listen for live system color-scheme changes. Light mode remov
 Films lists protected websites, including Cuevana domains and cineb.st by default. Add or stop protection for the active hostname using a named action, remove entries from the list, or pause protection globally without losing the list. Default-family removals persist; adding an individual domain back protects that domain. Changes synchronize between open popup views. Existing explicit hostname exceptions are retained.
 
 Feed uses compact website cards. YouTube has an on/off switch and visible Simple/Custom buttons; the custom choices describe the Home feed, Shorts shelves/shortcuts and related-video sidebar. Disabling YouTube collapses its options without losing saved custom choices. Colors use the existing paired light/dark palettes.
+
+### Compact Feed (3.7.2)
+
+Replaced website cards with plain checkbox rows. YouTube’s settings are behind a collapsed Customize disclosure; All three and Choose retain the existing saved modes and individual choices. Removed repeated descriptions and icons.
