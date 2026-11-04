@@ -23,11 +23,11 @@ const fixture='<html><body><ytd-browse page-subtype="home">Home</ytd-browse><ytd
  const popup=new JSDOM(read('popup.html'),{runScripts:'outside-only'}),p=popup.window;let saved,fail=false,listener;
  p.chrome={storage:{local:{get:async defaults=>defaults,set:async value=>{if(fail)throw Error('offline');saved=JSON.parse(JSON.stringify(value));}},onChanged:{addListener:fn=>listener=fn}}};p.eval(read('youtube-focus-popup.js'));await tick();
  const mode=p.document.querySelector('#youtube-focus-mode'),custom=p.document.querySelector('#youtube-focus-custom'),feed=p.document.querySelector('#youtube-hide-feed'),master=p.document.querySelector('#youtube-focus-enabled');
- assert.equal(custom.hidden,true);mode.value='custom';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(custom.hidden,false);
+ assert.equal(custom.hidden,true);p.document.querySelector('[data-youtube-mode=custom]').click();await tick();assert.equal(custom.hidden,false);
  feed.click();await tick();assert.equal(saved.youtubeFocus.feed,false);
- mode.value='simple';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(saved.youtubeFocus.feed,false,'Simple retains custom choices');
- mode.value='custom';mode.dispatchEvent(new p.Event('change'));await tick();assert.equal(feed.checked,false);
+ p.document.querySelector('[data-youtube-mode=simple]').click();await tick();assert.equal(saved.youtubeFocus.feed,false,'Simple retains custom choices');
+ p.document.querySelector('[data-youtube-mode=custom]').click();await tick();assert.equal(feed.checked,false);
  fail=true;master.click();await tick();assert.equal(master.checked,true);assert.match(p.document.querySelector('#youtube-focus-status').textContent,/Could not save/);
- listener({youtubeFocus:{newValue:{enabled:false,mode:'custom',related:false}}},'local');assert.equal(master.checked,false);assert.equal(p.document.querySelector('#youtube-hide-related').checked,false);popup.window.close();
+ listener({youtubeFocus:{newValue:{enabled:false,mode:'custom',related:false}}},'local');assert.equal(master.checked,false);assert.equal(p.document.querySelector('#youtube-focus-options').hidden,true);assert.equal(p.document.querySelector('#youtube-hide-related').checked,false);popup.window.close();
  console.log('PASS: YouTube simple/custom/off, dynamic shelves, routes, player/search/subscriptions/chat preservation, storage race, popup persistence and failure rollback.');
 })().catch(e=>{console.error(e);process.exit(1)});

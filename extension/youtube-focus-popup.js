@@ -4,11 +4,15 @@
   const enabled = document.querySelector('#youtube-focus-enabled'), mode = document.querySelector('#youtube-focus-mode');
   const custom = document.querySelector('#youtube-focus-custom');
   const choices = Object.fromEntries(['feed','shorts','related'].map(key => [key,document.querySelector('#youtube-hide-'+key)]));
+  const buttons = [...document.querySelectorAll('[data-youtube-mode]')];
   const controls = [enabled,mode,...Object.values(choices)];
   let settings = defaults, ready = false, saving = false;
   function render() {
     enabled.checked = settings.enabled !== false;mode.value = settings.mode === 'custom' ? 'custom' : 'simple';
     custom.hidden = mode.value !== 'custom';
+    document.querySelector('#youtube-focus-options').hidden = !enabled.checked;
+    document.querySelector('#youtube-simple-summary').hidden = mode.value === 'custom';
+    for (const button of buttons) {button.setAttribute('aria-pressed',String(button.dataset.youtubeMode === mode.value));button.disabled = !ready || saving;}
     for (const [key,input] of Object.entries(choices)) input.checked = settings[key] !== false;
     for (const input of controls) input.disabled = !ready || saving;
   }
@@ -27,5 +31,6 @@
     catch {settings = previous;status.textContent = 'Could not save. Try again.';}
     finally {saving = false;render();}
   });
+  for (const button of buttons) button.addEventListener('click',() => {mode.value = button.dataset.youtubeMode;mode.dispatchEvent(new Event('change'));});
   section.hidden = false;
 })();
