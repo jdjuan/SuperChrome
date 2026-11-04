@@ -1,0 +1,32 @@
+/* Every rule is gated: switching off restores the underlying Gmail theme. */
+html[data-sc-gmail-dark] { color-scheme:dark; background:#17191c!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="base"] { background-color:#17191c!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="surface"] { background-color:#202124!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="raised"] { background-color:#292c31!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="accent"] { background-color:#33496b!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg] { background-image:none!important; border-color:#5f6368!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="text"] { color:#e8eaed!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="muted"] { color:#bdc1c6!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="link"] { color:#aecbfa!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fill="icon"] { fill:#bdc1c6!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-stroke="icon"] { stroke:#bdc1c6!important; }
+/* Only Gmail's monochrome sprite icons; photos, logos and colored stars stay intact. */
+html[data-sc-gmail-dark] :is(.T-I-J3,.qj,.G-asx,.aAu,.d-Na-J3,.ajz,.aaA,.dv,.J-Z-M-I-JG,.J-JN-M-I-JG):not(.a3s *) { filter:brightness(0) invert(.85)!important; }
+/* Preserve unread, selected and hover distinctions even when Gmail uses white. */
+html[data-sc-gmail-dark] .zA.zE { background:#292c31!important; font-weight:700; }
+html[data-sc-gmail-dark] .zA.yO { background:#202124!important; }
+html[data-sc-gmail-dark] .zA:is(:hover,.x7) { background:#33496b!important; }
+html[data-sc-gmail-dark] :is(input,textarea,select) { color:#e8eaed!important; background-color:#292c31!important; border-color:#5f6368!important; caret-color:#e8eaed; }
+html[data-sc-gmail-dark] input::placeholder,html[data-sc-gmail-dark] textarea::placeholder { color:#bdc1c6!important; opacity:1; }
+/* CSS only: no attributes, styles, controls or text are inserted into editors. */
+html[data-sc-gmail-dark] :is([contenteditable="true"],[contenteditable=""],.editable),
+html[data-sc-gmail-dark] :is([contenteditable="true"],[contenteditable=""],.editable) * { color:#e8eaed!important; background-color:#202124!important; caret-color:#e8eaed; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]),
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) *:not(img,picture,video,canvas,svg,svg *) { color:#e8eaed!important; background-color:#202124!important; background-image:none!important; border-color:#5f6368!important; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) a[href],
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) a[href] * { color:#aecbfa!important; }
+html[data-sc-gmail-dark] .a3s[data-sc-gmail-original] { color:#202124!important; background-color:#fff!important; color-scheme:light; }
+html:not([data-sc-gmail-dark]) [data-sc-gmail-control] { display:none!important; }
+@media print {
+  html[data-sc-gmail-dark] [data-sc-gmail-control] { display:none!important; }
+}

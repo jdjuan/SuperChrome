@@ -46,3 +46,13 @@ Uses `activeTab`, `scripting`, `storage`, `nativeMessaging` and `webNavigation`.
 The update check sends a standard public API request to GitHub with no credentials, page URLs or browser preferences. GitHub receives normal connection metadata such as your IP address. No extra extension permissions, analytics or SuperChrome hosted backend are used. GitHub's API supports CORS for this request.
 
 Uninstall through the extensions page. Remove the optional native-host registration and helper files separately; keep shared Python/yt-dlp/FFmpeg dependencies if other tools need them.
+
+## Gmail dark mode (3.5)
+
+**Appearance → Gmail dark mode** darkens the Gmail inbox, opened messages, menus, and compose/reply windows. It is enabled by default, works across Gmail accounts in the browser, and saves its preference locally per browser. Gmail tabs open the Appearance tool automatically. Turning it off restores Gmail’s underlying theme immediately.
+
+Each opened message has a **Show original colors** button outside its content. This restores that message’s original design on a light reading surface; **Use dark colors** switches it back. The choice lasts while that message DOM remains open. Photos and logos are not inverted. Dark message rendering normalizes text/background colors and suppresses CSS background images; original colors restore those designs. Embedded cross-origin Google apps (Calendar, Keep, Contacts, Chat, etc.) and attachment previews are outside the scope of this feature.
+
+`gmail-dark.js` batches DOM changes and maps Gmail’s computed surface/text colors to paired dark colors, without depending on its shell’s generated class names. A few stable Gmail selectors identify message bodies, editors, inbox states and monochrome icons. Site theme changes and newly inserted content are reclassified with our stylesheet temporarily gated off during the same task. All CSS is gated by one root attribute. It does not change Gmail account settings or write styles/controls into editable message content. No Gmail API, network service, or additional permissions are used.
+
+Local tests cover toggles and storage failures, startup/account URLs, dynamic messages, runtime theme changes, original-color controls, message/editor HTML integrity, site isolation and at least 4.5:1 text contrast on all four dark surfaces. Chrome live verification covered the inbox, an opened message, original-color switching, monochrome icons, an untouched compose window and immediate restoration through the popup toggle. SuperChrome was reloaded in Chrome and Brave with its stable extension ID. Gmail or email markup changes may require selector adjustments.

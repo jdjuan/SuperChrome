@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "3.4.4",
+  "version": "3.5.0",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -117,6 +117,18 @@
       ],
       "js": [
         "linkedin-notifications.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "gmail-dark.js"
+      ],
+      "css": [
+        "gmail-dark.css"
       ],
       "run_at": "document_start"
     }
