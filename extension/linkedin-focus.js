@@ -19,6 +19,32 @@
     catch { const status=message?.shadowRoot.querySelector('[role="status"]');if(status)setText(status,'Could not start the timer. Try again.'); }
   }
   const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
+  // Legacy feed content can be transplanted into this shadow root. Document
+  // styles cannot cross that boundary. Keep its host covered until scoped rules
+  // are installed, including when attachShadow happens after the host is added.
+  const shadowEntries = new Map();
+  const shadowReady = 'data-superchrome-linkedin-shadow-ready';
+  const shadowFocus = 'data-superchrome-linkedin-shadow-focus';
+  const postSelector = '.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]';
+  function syncShadow(active) {
+    for (const [host, entry] of shadowEntries) if (!host.isConnected) { entry.observer.disconnect(); shadowEntries.delete(host); }
+    const host = document.querySelector('#interop-outlet');
+    if (!host) return;
+    const root = host.shadowRoot;
+    if (!root) { host.removeAttribute(shadowReady); return; }
+    let entry = shadowEntries.get(host);
+    if (!entry) {
+      const sheet = document.createElement('style');
+      sheet.dataset.superchrome = 'linkedin-shadow-focus';
+      sheet.textContent = `:host([${shadowFocus}]) :is(${postSelector}):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *) { display: none !important; }`;
+      const observer = new MutationObserver(() => syncShadow(document.documentElement.hasAttribute(attribute)));
+      observer.observe(root, {childList:true, subtree:true});
+      entry = {sheet, observer}; shadowEntries.set(host, entry);
+    }
+    host.toggleAttribute(shadowFocus, active);
+    if (!entry.sheet.isConnected) root.append(entry.sheet);
+    if (!host.hasAttribute(shadowReady)) host.setAttribute(shadowReady, '');
+  }
   function update() {
     if (!document.documentElement) return;
     lastUrl = location.href;
@@ -42,6 +68,7 @@
       globalThis.SuperChromeTheme?.apply(timer);
     } else timer?.remove();
     document.documentElement.toggleAttribute(attribute, active);
+    syncShadow(active);
     if (!style?.isConnected) {
       style = document.createElement('style');
       style.dataset.superchrome = 'linkedin-focus';
