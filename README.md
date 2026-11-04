@@ -49,7 +49,7 @@ Uninstall through the extensions page. Remove the optional native-host registrat
 
 ## Gmail dark mode (3.5)
 
-**Appearance → Gmail dark mode** darkens the Gmail inbox, opened messages, menus, and compose/reply windows. It is enabled by default, works across Gmail accounts in the browser, and saves its preference locally per browser. Gmail tabs open the Appearance tool automatically. Turning it off restores Gmail’s underlying theme immediately.
+**Appearance → Gmail: follow system theme** darkens the Gmail inbox, opened messages, menus, and compose/reply windows. It follows system appearance by default, automatically enabling dark colors only while the system is dark, works across Gmail accounts in the browser, and saves its preference locally per browser. Gmail tabs open the Appearance tool automatically. Turning it off restores Gmail’s underlying theme immediately.
 
 Each opened message has a **Show original colors** button outside its content. This restores that message’s original design on a light reading surface; **Use dark colors** switches it back. The choice lasts while that message DOM remains open. Photos and logos are not inverted. Dark message rendering normalizes text/background colors and suppresses CSS background images; original colors restore those designs. Embedded cross-origin Google apps (Calendar, Keep, Contacts, Chat, etc.) and attachment previews are outside the scope of this feature.
 
@@ -63,8 +63,12 @@ New and reused Gmail panels are classified directly in the mutation observer’s
 
 ## LinkedIn dark mode (3.6)
 
-**Appearance → LinkedIn dark mode** darkens LinkedIn independently of Gmail and Feed focus. It defaults on and persists locally per browser. The feature covers feeds, profiles, notifications, jobs, menus, post/comment composers and messaging. Switching it off immediately restores the site's own theme, including an existing native dark theme; it does not change LinkedIn account preferences.
+**Appearance → LinkedIn: follow system theme** darkens LinkedIn independently of Gmail and Feed focus. It follows system appearance by default, updates open tabs automatically when the system changes, and persists its opt-out locally per browser. The feature covers feeds, profiles, notifications, jobs, menus, post/comment composers and messaging. Switching it off immediately restores the site's own theme, including an existing native dark theme; it does not change LinkedIn account preferences.
 
 The content script maps computed surface/text colors instead of relying on LinkedIn's generated layout classes. It handles new content during mutation delivery before paint, preserves photos, banners and colored logo artwork, and styles editors through CSS without adding attributes or formatting to their contents. LinkedIn's open `#interop-outlet` shadow root receives a small separately scoped stylesheet and observer for embedded messaging. Same-origin LinkedIn frames are included; third-party ads and external embedded documents are outside this scope. Existing focus and notification overlays refresh their own palettes to match the restored/active page theme.
 
 No permissions were added. Tests cover dynamic panels before paint, SPA routes, same-origin frame URLs, original-theme restoration, independent storage/error rollback, media/editor integrity, messaging shadow content, focus overlay themes under both OS preferences and at least 4.5:1 text contrast. Chrome live verification covered the Feed focus surface, Notifications and immediate restoration of the page and messaging theme gates through the independent popup toggle; generated layout classes and private message content are not stored in the repository.
+
+### System appearance (3.6.2)
+
+Gmail and LinkedIn listen for live system color-scheme changes. Light mode removes the extension’s dark styling and restores the site’s own theme; dark mode reapplies it, including LinkedIn messaging. The Appearance switches enable or disable this automatic behavior. No account theme preferences or extension permissions change.

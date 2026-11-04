@@ -1,17 +1,25 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
 const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8'),tick=()=>new Promise(r=>setImmediate(r));
 const fixture=`<!doctype html><html><head><style>body{background-color:rgb(244,242,238);color:rgb(0,0,0)}.card{background-color:rgb(255,255,255);color:rgb(0,0,0)}</style></head><body><nav class="card"><a href="/feed/">Home</a></nav><main><article class="card"><p>Post</p><img src="photo.png" style="background-color:white"><div id="banner" style="background-image:url(banner.png)"></div><svg><path id="icon" style="fill:rgb(0,0,0)"></path><path id="logo" style="fill:rgb(10,102,194)"></path></svg></article><div contenteditable="true" role="textbox"><p style="color:black">Unsent text</p><svg><path fill="black"></path></svg></div><section data-superchrome="linkedin-message"></section></main><div id="interop-outlet" class="theme--light"></div></body></html>`;
-function setup({enabled=true,url='https://www.linkedin.com/feed/',deferred=false,darkOS=false,html=fixture}={}){
+function setup({enabled=true,url='https://www.linkedin.com/feed/',deferred=false,darkOS=true,html=fixture}={}){
  const d=new JSDOM(html,{url,runScripts:'outside-only'}),w=d.window;let listener,resolve;
  const messaging=w.document.querySelector('#interop-outlet');
  if(messaging)messaging.attachShadow({mode:'open'}).innerHTML='<section style="background-color:white;color:black"><button>Messaging</button><div contenteditable="true"><p>Unsent message</p></div></section>';
- w.matchMedia=()=>({matches:darkOS});w.eval(read('theme.js'));
+ const media={matches:darkOS,addEventListener:(type,fn)=>media.listener=fn};w.matchMedia=()=>media;w.eval(read('theme.js'));
  w.chrome={storage:{local:{get:()=>deferred?new Promise(r=>resolve=r):Promise.resolve({linkedinDarkMode:enabled})},onChanged:{addListener:f=>listener=f}}};
  const style=w.document.createElement('style');style.textContent=read('linkedin-dark.css');w.document.head.append(style);w.eval(read('linkedin-dark.js'));
- return {w,d,change:(value,area='local')=>listener?.({linkedinDarkMode:{newValue:value}},area),resolve:value=>resolve(value)};
+ return {w,d,system:dark=>{media.matches=dark;media.listener?.({matches:dark});},change:(value,area='local')=>listener?.({linkedinDarkMode:{newValue:value}},area),resolve:value=>resolve(value)};
 }
 (async()=>{
- for(const darkOS of [false,true]){
+ const system=setup({darkOS:false});await tick();
+ assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-linkedin-dark'),'Light system starts without forced dark colors');
+ system.system(true);assert.ok(system.w.document.documentElement.hasAttribute('data-sc-linkedin-dark'),'Switches dark without reload');
+ system.system(false);assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-linkedin-dark'),'Switches light without reload');
+ assert.ok(!system.w.document.querySelector("#interop-outlet").hasAttribute("data-sc-linkedin-dark"));
+ system.system(true);system.change(false);system.system(false);system.system(true);
+ assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-linkedin-dark'),'Opt-out survives system changes');system.d.window.close();
+
+ for(const darkOS of [true]){
  const x=setup({darkOS}),{w}=x;const editor=w.document.querySelector('[contenteditable]'),draft=editor.outerHTML,photo=w.document.querySelector('img').outerHTML,banner=w.document.querySelector('#banner').style.backgroundImage;
  await tick();const root=w.document.documentElement,card=w.document.querySelector('article'),overlay=w.document.querySelector('[data-superchrome]');
  assert.ok(root.hasAttribute('data-sc-linkedin-dark'));assert.equal(card.getAttribute('data-sc-linkedin-bg'),'surface');assert.equal(w.getComputedStyle(card).backgroundColor,'rgb(32, 33, 36)');assert.equal(overlay.dataset.superchromeTheme,'dark','Focus overlay follows actual dark site independently of OS');

@@ -9,6 +9,14 @@
   const excluded = `script, style, link, meta, img, picture, video, canvas, iframe, ${editorSelector}, ${editorSelector.split(', ').map(s => s + ' *').join(', ')}`;
   let enabled = false, ready = false, pending = new Set();
   const messages = new Map();
+  const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+  let followSystem = true;
+  function syncTheme() {
+    enabled = ready && followSystem && systemTheme.matches;
+    update();
+  }
+  systemTheme.addEventListener('change', syncTheme);
+
 
   function rgb(value) {
     const parts = value.match(/[\d.]+/g)?.map(Number);
@@ -115,11 +123,11 @@
   });
   observer.observe(document, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style','bgcolor','color']});
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.gmailDarkMode) { ready = true; enabled = changes.gmailDarkMode.newValue !== false; update(); }
+    if (area === 'local' && changes.gmailDarkMode) { ready = true; followSystem = changes.gmailDarkMode.newValue !== false; syncTheme(); }
   });
   chrome.storage.local.get({gmailDarkMode:true}).then(settings => {
     if (ready) return;
-    ready = true; enabled = settings.gmailDarkMode !== false; update();
+    ready = true; followSystem = settings.gmailDarkMode !== false; syncTheme();
   }).catch(() => {});
   document.addEventListener('DOMContentLoaded', () => { if (ready) update(); }, {once:true});
 })();

@@ -2,13 +2,22 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),path=require('path'),assert=requ
 const read=f=>fs.readFileSync(path.join(__dirname,'../extension',f),'utf8');
 const tick=()=>new Promise(r=>setTimeout(r,120));
 const fixture=`<html><body style="background-color:rgb(248,250,253);color:rgb(32,33,36)"><main><div id="surface" style="background-color:white;color:black">Inbox</div><div class="zA zE">Unread</div><div class="a3s"><table bgcolor="white"><tr><td style="color:black;background-color:white"><a href="https://example.test">Link</a><img src="logo.png" style="background-color:white"><svg><path fill="black"></path></svg></td></tr></table></div><div contenteditable="true" role="textbox"><span style="color:rgb(10,20,30)">Draft</span><svg><path fill="black"></path></svg></div></main></body></html>`;
-function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=fixture,deferred=false}={}){
+function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=fixture,deferred=false,darkOS=true}={}){
  const d=new JSDOM(html,{url,runScripts:'outside-only'}),w=d.window;let change,resolve;
  w.chrome={storage:{local:{get:()=>deferred?new Promise(r=>resolve=r):Promise.resolve({gmailDarkMode:enabled})},onChanged:{addListener:f=>change=f}}};
+ const media={matches:darkOS,addEventListener:(type,fn)=>media.listener=fn};w.matchMedia=()=>media;
  w.eval(read('gmail-dark.js'));
- return {w,d,change:(value,area='local')=>change?.({gmailDarkMode:{newValue:value}},area),resolve:value=>resolve(value)};
+ return {w,d,system:dark=>{media.matches=dark;media.listener?.({matches:dark});},change:(value,area='local')=>change?.({gmailDarkMode:{newValue:value}},area),resolve:value=>resolve(value)};
 }
 (async()=>{
+ const system=setup({darkOS:false});await tick();
+ assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-gmail-dark'),'Light system starts without forced dark colors');
+ system.system(true);assert.ok(system.w.document.documentElement.hasAttribute('data-sc-gmail-dark'),'Switches dark without reload');
+ system.system(false);assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-gmail-dark'),'Switches light without reload');
+ assert.equal(system.w.document.querySelectorAll("[data-sc-gmail-control]").length,0);
+ system.system(true);system.change(false);system.system(false);system.system(true);
+ assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-gmail-dark'),'Opt-out survives system changes');system.d.window.close();
+
  const x=setup(),{w}=x;const editor=w.document.querySelector('[contenteditable]'),draft=editor.outerHTML;
  const body=w.document.querySelector('.a3s'),original=body.innerHTML;await tick();
  assert.ok(w.document.documentElement.hasAttribute('data-sc-gmail-dark'));

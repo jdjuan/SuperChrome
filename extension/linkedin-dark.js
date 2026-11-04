@@ -6,6 +6,14 @@
   const excluded = 'script,style,link,meta,img,picture,video,canvas,iframe';
   let ready = false, enabled = false;
   const pending = new Set();
+  const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+  let followSystem = true;
+  function syncTheme() {
+    enabled = ready && followSystem && systemTheme.matches;
+    update();
+  }
+  systemTheme.addEventListener('change', syncTheme);
+
   const shadows = new Map();
   // LinkedIn renders its legacy messaging UI inside this open shadow boundary.
   // Scope our own small stylesheet there; never copy LinkedIn's large site CSS.
@@ -122,12 +130,12 @@
   new MutationObserver(onMutations).observe(document, observerOptions);
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.linkedinDarkMode) {
-      ready = true; enabled = changes.linkedinDarkMode.newValue !== false; update();
+      ready = true; followSystem = changes.linkedinDarkMode.newValue !== false; syncTheme();
     }
   });
   chrome.storage.local.get({linkedinDarkMode:true}).then(settings => {
     if (ready) return;
-    ready = true; enabled = settings.linkedinDarkMode !== false; update();
+    ready = true; followSystem = settings.linkedinDarkMode !== false; syncTheme();
   }).catch(() => {});
   document.addEventListener('DOMContentLoaded', () => { if (ready) update(); }, {once:true});
 })();
