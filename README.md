@@ -60,3 +60,11 @@ Local tests cover toggles and storage failures, startup/account URLs, dynamic me
 ### Gmail message-opening flash (3.5.1)
 
 New and reused Gmail panels are classified directly in the mutation observer’s batch, before the next rendering opportunity. Removing the previous 80 ms timer prevents the initial white conversation container from painting when opening an email. Original-color controls and the off toggle retain their behavior. Regression tests assert that inserted conversation shells, headers and reused surfaces are styled by mutation delivery without waiting for a timer.
+
+## LinkedIn dark mode (3.6)
+
+**Appearance → LinkedIn dark mode** darkens LinkedIn independently of Gmail and Feed focus. It defaults on and persists locally per browser. The feature covers feeds, profiles, notifications, jobs, menus, post/comment composers and messaging. Switching it off immediately restores the site's own theme, including an existing native dark theme; it does not change LinkedIn account preferences.
+
+The content script maps computed surface/text colors instead of relying on LinkedIn's generated layout classes. It handles new content during mutation delivery before paint, preserves photos, banners and colored logo artwork, and styles editors through CSS without adding attributes or formatting to their contents. LinkedIn's open `#interop-outlet` shadow root receives a small separately scoped stylesheet and observer for embedded messaging. Same-origin LinkedIn frames are included; third-party ads and external embedded documents are outside this scope. Existing focus and notification overlays refresh their own palettes to match the restored/active page theme.
+
+No permissions were added. Tests cover dynamic panels before paint, SPA routes, same-origin frame URLs, original-theme restoration, independent storage/error rollback, media/editor integrity, messaging shadow content, focus overlay themes under both OS preferences and at least 4.5:1 text contrast. Chrome live verification covered the Feed focus surface, Notifications and immediate restoration of the page and messaging theme gates through the independent popup toggle; generated layout classes and private message content are not stored in the repository.

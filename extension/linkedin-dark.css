@@ -1,0 +1,18 @@
+/* Only active on LinkedIn, and fully reversible through the Appearance toggle. */
+html[data-sc-linkedin-dark] { color-scheme:dark; background:#17191c!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="base"] { background-color:#17191c!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="surface"] { background-color:#202124!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="raised"] { background-color:#292c31!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="accent"] { background-color:#33496b!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg] { border-color:#65748c!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="text"] { color:#e8eaed!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="muted"] { color:#bdc1c6!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="link"] { color:#aecbfa!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fill="icon"] { fill:#bdc1c6!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-stroke="icon"] { stroke:#bdc1c6!important; }
+html[data-sc-linkedin-dark] :is(input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]),
+html[data-sc-linkedin-dark] :is([contenteditable]:not([contenteditable="false"]),[role="textbox"]) *:not(img,picture,video,svg,svg *) {
+  color:#e8eaed!important; background-color:#202124!important; caret-color:#e8eaed;
+}
+html[data-sc-linkedin-dark] input::placeholder,html[data-sc-linkedin-dark] textarea::placeholder { color:#bdc1c6!important; opacity:1; }
+html[data-sc-linkedin-dark] :is(button,[role="button"],a,input,textarea,select):focus-visible { outline:2px solid #aecbfa!important; outline-offset:2px; }
