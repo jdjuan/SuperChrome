@@ -51,10 +51,14 @@ function setup({enabled=true,url='https://www.linkedin.com/feed/',deferred=false
  lw.Element.prototype.setAttribute=function(name,value){if(/^data-sc-linkedin-(bg|fg|fill|stroke)$/.test(name))wrote=true;return set.call(this,name,value);};
  const big=lw.document.createElement('div');big.innerHTML='<div class="card">Panel</div>'.repeat(650);lw.document.body.append(big);
  await Promise.resolve();assert.equal(reads,0,'Mutation delivery does not synchronously scan styles');assert.equal(queue.length,1,'Mutations coalesce');
- queue.shift()();assert.ok(reads<=200,'Style reads are capped per task');assert.equal(interleaved,false,'Reads precede attribute writes');assert.ok(queue.length,'Large changes yield for browser input');
- while(queue.length){wrote=false;queue.shift()();}assert.equal(big.lastElementChild.getAttribute('data-sc-linkedin-bg'),'surface');load.d.window.close();
+ queue.shift()();assert.ok(reads<=50,'Style reads are capped per task');assert.equal(interleaved,false,'Reads precede attribute writes');assert.ok(queue.length,'Large changes yield for browser input');
+ while(queue.length){wrote=false;queue.shift()();}assert.equal(big.lastElementChild.getAttribute('data-sc-linkedin-bg'),'surface');
+ let gateChanges=0;const gateObserver=new lw.MutationObserver(records=>gateChanges+=records.length);gateObserver.observe(lw.document.documentElement,{attributes:true,attributeFilter:['data-sc-linkedin-dark']});
+ reads=0;wrote=false;big.style.transform='translateY(120px)';big.style.height='800px';await Promise.resolve();assert.equal(queue.length,0,'Scroll layout styles do not schedule dark work');assert.equal(reads,0);
+ big.className='scrolling';await Promise.resolve();assert.equal(queue.length,1);queue.shift()();await Promise.resolve();assert.equal(reads,1,'Ancestor class updates do not rescan its 650 descendants');assert.equal(gateChanges,0,'Mutation work never switches page-wide dark styles off');
+ big.style.backgroundColor='rgb(200,220,255)';await Promise.resolve();queue.shift()();assert.equal(big.getAttribute('data-sc-linkedin-bg'),'accent','Paint changes still update');gateObserver.disconnect();load.d.window.close();
  // All visible palette text/surface combinations meet the project contrast rule.
- const css=read('linkedin-dark.css'),foregrounds=[...css.matchAll(/fg="(?:text|muted|link)"\] \{ color:(#[a-f0-9]{6})/g)].map(m=>m[1]),backgrounds=[...css.matchAll(/bg="\w+"\] \{ background-color:(#[a-f0-9]{6})/g)].map(m=>m[1]);assert.equal(foregrounds.length,3);assert.equal(backgrounds.length,4);
+ const css=read('linkedin-dark.css'),foregrounds=[...css.matchAll(/fg="(?:text|muted|link)"\]:not\(\[data-sc-linkedin-sampling\]\) \{ color:(#[a-f0-9]{6})/g)].map(m=>m[1]),backgrounds=[...css.matchAll(/bg="\w+"\]:not\(\[data-sc-linkedin-sampling\]\) \{ background-color:(#[a-f0-9]{6})/g)].map(m=>m[1]);assert.equal(foregrounds.length,3);assert.equal(backgrounds.length,4);
  const lum=hex=>hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
  for(const fg of foregrounds)for(const bg of backgrounds)assert.ok((lum(fg)+.05)/(lum(bg)+.05)>=4.5,`${fg} on ${bg}`);
  const popup=new JSDOM(read('popup.html'),{runScripts:'outside-only'}),p=popup.window;let saved,fail=false,listener;

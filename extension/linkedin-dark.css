@@ -1,20 +1,20 @@
 /* A cheap baseline covers new panels while bounded classification catches up. */
-html[data-sc-linkedin-dark] body,
-html[data-sc-linkedin-dark] :is(header,nav,main,aside,section,article,[role="dialog"],#interop-outlet) {
+html[data-sc-linkedin-dark] body:not([data-sc-linkedin-sampling]),
+html[data-sc-linkedin-dark] :is(header,nav,main,aside,section,article,[role="dialog"],#interop-outlet):not([data-sc-linkedin-sampling]) {
   background-color:#17191c!important;color:#e8eaed!important;
 }
 /* Only active on LinkedIn, and fully reversible through the Appearance toggle. */
 html[data-sc-linkedin-dark] { color-scheme:dark; background:#17191c!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-bg="base"] { background-color:#17191c!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-bg="surface"] { background-color:#202124!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-bg="raised"] { background-color:#292c31!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-bg="accent"] { background-color:#33496b!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-bg] { border-color:#65748c!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-fg="text"] { color:#e8eaed!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-fg="muted"] { color:#bdc1c6!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-fg="link"] { color:#aecbfa!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-fill="icon"] { fill:#bdc1c6!important; }
-html[data-sc-linkedin-dark] [data-sc-linkedin-stroke="icon"] { stroke:#bdc1c6!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="base"]:not([data-sc-linkedin-sampling]) { background-color:#17191c!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="surface"]:not([data-sc-linkedin-sampling]) { background-color:#202124!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="raised"]:not([data-sc-linkedin-sampling]) { background-color:#292c31!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg="accent"]:not([data-sc-linkedin-sampling]) { background-color:#33496b!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-bg]:not([data-sc-linkedin-sampling]) { border-color:#65748c!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="text"]:not([data-sc-linkedin-sampling]) { color:#e8eaed!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="muted"]:not([data-sc-linkedin-sampling]) { color:#bdc1c6!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fg="link"]:not([data-sc-linkedin-sampling]) { color:#aecbfa!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-fill="icon"]:not([data-sc-linkedin-sampling]) { fill:#bdc1c6!important; }
+html[data-sc-linkedin-dark] [data-sc-linkedin-stroke="icon"]:not([data-sc-linkedin-sampling]) { stroke:#bdc1c6!important; }
 html[data-sc-linkedin-dark] :is(input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]),
 html[data-sc-linkedin-dark] :is([contenteditable]:not([contenteditable="false"]),[role="textbox"]) *:not(img,picture,video,svg,svg *) {
   color:#e8eaed!important; background-color:#202124!important; caret-color:#e8eaed;
