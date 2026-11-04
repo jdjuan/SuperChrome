@@ -1,15 +1,17 @@
+/* Cheap baseline for new conversation panels while scheduled classification catches up. */
+html[data-sc-gmail-dark] :where(body,main,header,section,[role="main"],[role="dialog"]):not([data-sc-gmail-sampling]):where(:not(.a3s,.a3s *)) {background-color:#202124!important;color:#e8eaed!important}
 /* Every rule is gated: switching off restores the underlying Gmail theme. */
 html[data-sc-gmail-dark] { color-scheme:dark; background:#17191c!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="base"] { background-color:#17191c!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="surface"] { background-color:#202124!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="raised"] { background-color:#292c31!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="accent"] { background-color:#33496b!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg] { background-image:none!important; border-color:#5f6368!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-fg="text"] { color:#e8eaed!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-fg="muted"] { color:#bdc1c6!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-fg="link"] { color:#aecbfa!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-fill="icon"] { fill:#bdc1c6!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-stroke="icon"] { stroke:#bdc1c6!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="base"]:not([data-sc-gmail-sampling]) { background-color:#17191c!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="surface"]:not([data-sc-gmail-sampling]) { background-color:#202124!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="raised"]:not([data-sc-gmail-sampling]) { background-color:#292c31!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="accent"]:not([data-sc-gmail-sampling]) { background-color:#33496b!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg]:not([data-sc-gmail-sampling]) { background-image:none!important; border-color:#5f6368!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="text"]:not([data-sc-gmail-sampling]) { color:#e8eaed!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="muted"]:not([data-sc-gmail-sampling]) { color:#bdc1c6!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fg="link"]:not([data-sc-gmail-sampling]) { color:#aecbfa!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-fill="icon"]:not([data-sc-gmail-sampling]) { fill:#bdc1c6!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-stroke="icon"]:not([data-sc-gmail-sampling]) { stroke:#bdc1c6!important; }
 /* Only Gmail's monochrome sprite icons; photos, logos and colored stars stay intact. */
 html[data-sc-gmail-dark] :is(.T-I-J3,.qj,.G-asx,.aAu,.d-Na-J3,.ajz,.aaA,.dv,.J-Z-M-I-JG,.J-JN-M-I-JG):not(.a3s *) { filter:brightness(0) invert(.85)!important; }
 /* Preserve unread, selected and hover distinctions even when Gmail uses white. */

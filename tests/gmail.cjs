@@ -6,6 +6,8 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  const d=new JSDOM(html,{url,runScripts:'outside-only'}),w=d.window;let change,resolve;
  w.chrome={storage:{local:{get:()=>deferred?new Promise(r=>resolve=r):Promise.resolve({gmailDarkMode:enabled})},onChanged:{addListener:f=>change=f}}};
  const media={matches:darkOS,addEventListener:(type,fn)=>media.listener=fn};w.matchMedia=()=>media;
+ const nativeSheet=w.document.createElement('style');nativeSheet.textContent='.gmail-test-accent{background-color:rgb(200,220,255)}';w.document.head.append(nativeSheet);
+ const sheet=w.document.createElement('style');sheet.textContent=read('gmail-dark.css');w.document.head.append(sheet);
  w.eval(read('gmail-dark.js'));
  return {w,d,system:dark=>{media.matches=dark;media.listener?.({matches:dark});},change:(value,area='local')=>change?.({gmailDarkMode:{newValue:value}},area),resolve:value=>resolve(value)};
 }
@@ -26,17 +28,19 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  assert.equal(body.innerHTML,original,'Message HTML stays intact');
  let control=body.previousSibling;assert.ok(control.hasAttribute('data-sc-gmail-control'));
  const button=control.shadowRoot.querySelector('button');button.click();assert.ok(body.hasAttribute('data-sc-gmail-original'));assert.equal(button.getAttribute('aria-pressed'),'true');button.click();assert.ok(!body.hasAttribute('data-sc-gmail-original'));
- // Gmail inserts a white conversation shell before its message body. It must
- // be dark by mutation delivery, before the browser gets a rendering opportunity.
+ // Gmail inserts conversation shells before their message bodies. Baseline CSS
+ // covers semantic panels while scheduled classification and controls catch up.
  const shell=w.document.createElement('section');shell.style.backgroundColor='white';shell.style.color='black';
  shell.innerHTML='<header style="background-color:white;color:black">Message header</header><div class="a3s"><p>Body</p></div>';
- w.document.querySelector('main').append(shell);await Promise.resolve();
- assert.equal(shell.getAttribute('data-sc-gmail-bg'),'surface','New conversation shell is styled before the next task/paint');
- assert.equal(shell.querySelector('header').getAttribute('data-sc-gmail-fg'),'text','New header is readable before paint');
- assert.ok(shell.querySelector('.a3s').previousSibling.hasAttribute('data-sc-gmail-control'),'Message controls are also ready before paint');
- shell.style.backgroundColor='rgb(200,220,255)';await Promise.resolve();
- assert.equal(shell.getAttribute('data-sc-gmail-bg'),'accent','Reused message shells update before paint');
- shell.remove();await Promise.resolve();
+ w.document.querySelector('main').append(shell);await tick();
+ assert.equal(shell.getAttribute('data-sc-gmail-bg'),'surface','New conversation shell is styled after the scheduled batch');
+ assert.equal(shell.querySelector('header').getAttribute('data-sc-gmail-fg'),'text','New header is readable after the scheduled batch');
+ assert.ok(shell.querySelector('.a3s').previousSibling.hasAttribute('data-sc-gmail-control'),'Message controls are also ready after the scheduled batch');
+ shell.style.backgroundColor='rgb(200,220,255)';await tick();
+ assert.equal(shell.getAttribute('data-sc-gmail-bg'),'accent','Reused message shells update after the scheduled batch');
+ shell.removeAttribute('style');shell.className='gmail-test-accent';await tick();
+ assert.equal(w.getComputedStyle(shell).backgroundColor,'rgb(51, 73, 107)','Classified colors override startup baseline');
+ shell.remove();await tick();
  const added=w.document.createElement('div');added.className='a3s';added.innerHTML='<p style="color:black;background-color:white">New message</p>';w.document.querySelector('main').append(added);await tick();assert.ok(added.previousSibling.hasAttribute('data-sc-gmail-control'));
  w.document.querySelector('#surface').style.backgroundColor='rgb(200,220,255)';await tick();assert.equal(w.document.querySelector('#surface').getAttribute('data-sc-gmail-bg'),'accent','Runtime Gmail color changes are reclassified');
  assert.equal(editor.outerHTML,draft);
@@ -49,6 +53,22 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  const race=setup({deferred:true});race.change(false);race.resolve({gmailDarkMode:true});await tick();assert.ok(!race.w.document.documentElement.hasAttribute('data-sc-gmail-dark'));race.d.window.close();
  // DOM creation after document_start and multiple-account URLs.
  const early=setup({html:'',url:'https://mail.google.com/mail/u/2/#inbox'});await tick();early.w.document.body.innerHTML='<div class="a3s">New message</div>';await tick();assert.equal(early.w.document.querySelectorAll('[data-sc-gmail-control]').length,1);early.d.window.close();
+ // Large changes yield; scroll transforms and ancestor classes stay local.
+ const load=setup();await tick();const lw=load.w,queue=[];lw.setTimeout=fn=>queue.push(fn);
+ let reads=0,wrote=false,interleaved=false,gateChanges=0,editorMutations=0;
+ const computed=lw.getComputedStyle.bind(lw);lw.getComputedStyle=element=>{reads++;if(wrote)interleaved=true;return computed(element);};
+ const set=lw.Element.prototype.setAttribute;lw.Element.prototype.setAttribute=function(name,value){if(/^data-sc-gmail-(bg|fg|fill|stroke)$/.test(name))wrote=true;return set.call(this,name,value);};
+ const gateObserver=new lw.MutationObserver(records=>gateChanges+=records.length);gateObserver.observe(lw.document.documentElement,{attributes:true,attributeFilter:['data-sc-gmail-dark']});
+ const editorObserver=new lw.MutationObserver(records=>editorMutations+=records.length);editorObserver.observe(lw.document.querySelector('[contenteditable]'),{attributes:true,subtree:true});
+ const big=lw.document.createElement('div');big.innerHTML='<div style="background-color:white;color:black">Row</div>'.repeat(650);lw.document.body.append(big);
+ await Promise.resolve();assert.equal(reads,0,'Mutation delivery performs no computed style reads');assert.equal(queue.length,1,'Mutations coalesce');
+ queue.shift()();assert.ok(reads<=50,'Reads capped at 50 per task');assert.equal(interleaved,false,'Color reads precede classification writes');assert.ok(queue.length,'Large updates yield to input');
+ while(queue.length){wrote=false;queue.shift()();}await Promise.resolve();assert.equal(big.lastElementChild.getAttribute('data-sc-gmail-bg'),'surface');
+ reads=0;wrote=false;big.style.transform='translateY(100px)';big.style.height='1000px';await Promise.resolve();assert.equal(queue.length,0,'Scroll layout changes schedule no dark work');assert.equal(reads,0);
+ big.className='scrolling';await Promise.resolve();queue.shift()();await Promise.resolve();assert.equal(reads,1,'Class update does not scan 650 descendants');assert.equal(gateChanges,0,'Page-wide dark gate stays active');
+ big.style.backgroundColor='rgb(200,220,255)';await Promise.resolve();queue.shift()();assert.equal(big.getAttribute('data-sc-gmail-bg'),'accent');
+ lw.document.querySelector('[contenteditable]').classList.add('focused');await Promise.resolve();queue.shift()();await Promise.resolve();assert.equal(editorMutations,1,'Only the simulated Gmail class change touches draft markup; no sampling attributes');
+ gateObserver.disconnect();editorObserver.disconnect();load.d.window.close();
  // Popup persistence and failure rollback.
  const popup=new JSDOM(read('popup.html'),{runScripts:'outside-only'}),p=popup.window;let saved,fail=false,listener;
  p.chrome={storage:{local:{get:async()=>({gmailDarkMode:false}),set:async data=>{if(fail)throw Error('Unavailable');saved=data;}},onChanged:{addListener:f=>listener=f}}};p.eval(read('gmail-popup.js'));await tick();const toggle=p.document.querySelector('#gmail-dark-mode');assert.equal(toggle.disabled,false);assert.equal(toggle.checked,false);toggle.click();await tick();assert.deepEqual(JSON.parse(JSON.stringify(saved)),{gmailDarkMode:true});fail=true;toggle.click();await tick();assert.equal(toggle.checked,true);assert.match(p.document.querySelector('#gmail-dark-status').textContent,/Could not save/);listener({gmailDarkMode:{newValue:false}},'local');assert.equal(toggle.checked,false);popup.window.close();
