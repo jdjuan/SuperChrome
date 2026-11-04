@@ -11,7 +11,7 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 - **Instagram images:** a small download arrow on post photos saves the displayed image, including individual carousel slides. No local helper is needed. If Instagram blocks the image request, the button offers a retry.
 - **Stats:** inspect available Facebook reel dates/views. Some reels do not expose metadata.
 - **Films:** block unwanted popups on Cuevana/Cineb by default, other sites opt-in. Some legitimate external links may need protection turned off.
-- **Brave:** reload YouTube once per video per tab when its ad-blocker warning interrupts playback. Runs only in Brave.
+- **Brave:** automatically reload YouTube once per video per tab when its ad-blocker warning blocks playback. Keeps your ad blocker enabled; playback is not guaranteed. Runs only in Brave.
 
 ## Installation
 
