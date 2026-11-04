@@ -119,6 +119,7 @@
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.linkedinFocus)enabled=changes.linkedinFocus.newValue!==false;if(changes.linkedinRevealUntil)revealUntil=Number(changes.linkedinRevealUntil.newValue)||0;if(changes.linkedinFocus||changes.linkedinRevealUntil)update();});
   // Reconcile new Home layouts and loading containers as LinkedIn replaces DOM.
   new MutationObserver(update).observe(document,{childList:true,subtree:true});
+  document.addEventListener('__superchrome_shadow_attached', update);
   window.addEventListener('popstate',update);
   document.addEventListener('visibilitychange',update);
   window.addEventListener('focus',update);

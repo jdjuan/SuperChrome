@@ -1,3 +1,8 @@
+/* A cheap baseline covers new panels while bounded classification catches up. */
+html[data-sc-linkedin-dark] body,
+html[data-sc-linkedin-dark] :is(header,nav,main,aside,section,article,[role="dialog"],#interop-outlet) {
+  background-color:#17191c!important;color:#e8eaed!important;
+}
 /* Only active on LinkedIn, and fully reversible through the Appearance toggle. */
 html[data-sc-linkedin-dark] { color-scheme:dark; background:#17191c!important; }
 html[data-sc-linkedin-dark] [data-sc-linkedin-bg="base"] { background-color:#17191c!important; }
@@ -16,3 +21,9 @@ html[data-sc-linkedin-dark] :is([contenteditable]:not([contenteditable="false"])
 }
 html[data-sc-linkedin-dark] input::placeholder,html[data-sc-linkedin-dark] textarea::placeholder { color:#bdc1c6!important; opacity:1; }
 html[data-sc-linkedin-dark] :is(button,[role="button"],a,input,textarea,select):focus-visible { outline:2px solid #aecbfa!important; outline-offset:2px; }
+
+/* Storage and document creation must not expose a light first frame. */
+@media (prefers-color-scheme:dark) {
+  html:not([data-sc-linkedin-theme-ready]),
+  html:not([data-sc-linkedin-theme-ready]) body {background:#17191c!important;color:#e8eaed!important;color-scheme:dark}
+}

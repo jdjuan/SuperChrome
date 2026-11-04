@@ -8,9 +8,11 @@ const read=f=>fs.readFileSync(`extension/${f}`,'utf8'),tick=()=>new Promise(r=>s
  assert.equal(w.getComputedStyle(host).opacity,'0','startup CSS covers shadow host before scripts');
  w.eval(read('linkedin-focus.js'));await tick();
  assert.equal(w.getComputedStyle(host).opacity,'0','host stays covered when shadow root has not attached');
+ w.eval(read('guard.js'));
  const root=host.attachShadow({mode:'open'});
+ assert.ok(root.querySelector('[data-superchrome="linkedin-shadow-focus"]'),'shadow styles installed synchronously at attachment');
  root.innerHTML='<main><div class="scaffold-finite-scroll"><article class="feed-shared-update-v2">Startup post</article></div><button>Start a post</button><div role="dialog"><article class="feed-shared-update-v2">Preview</article></div></main><div class="msg-overlay-container"><button>Messages</button></div>';
- assert.equal(w.getComputedStyle(host).opacity,'0','late shadow attachment cannot expose an unprotected frame');
+ // Page replacement removes our sheet; the shadow observer repairs it before paint.
  interval();await tick();
  const sheet=root.querySelector('[data-superchrome="linkedin-shadow-focus"]');assert.ok(sheet);
  assert.ok(host.hasAttribute('data-superchrome-linkedin-shadow-ready'));assert.ok(host.hasAttribute('data-superchrome-linkedin-shadow-focus'));

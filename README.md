@@ -84,3 +84,11 @@ Feed uses compact website cards. YouTube has an on/off switch and visible Simple
 ### Compact Feed (3.7.2)
 
 Replaced website cards with plain checkbox rows. YouTube’s settings are behind a collapsed Customize disclosure; All three and Choose retain the existing saved modes and individual choices. Removed repeated descriptions and icons.
+
+### LinkedIn responsiveness and startup (3.7.3)
+
+Dark-mode classification now reads computed colors before writing classification attributes, processes at most 200 elements per task, and coalesces mutation bursts. This avoids alternating style invalidation and computed-style reads for every element in a large LinkedIn update. A dark baseline covers semantic page panels while queued classification finishes; startup backgrounds follow system appearance while settings load. Detailed classification runs after yielding, rather than blocking mutation delivery. Ancestor filtering avoids pairwise comparisons of all changed roots.
+
+LinkedIn's `#interop-outlet` shadow attachment now emits a synchronous notification from the existing main-world guard. Feed focus installs its scoped hiding rules at attachment, before LinkedIn populates the root, while retaining the existing host cover and repair observer. No permissions or account preferences change.
+
+Chrome was found running the older 3.7.0 scripts until the unpacked extension was explicitly reloaded. The hung LinkedIn tab reported `RESULT_CODE_HUNG`. After reloading 3.7.3 with the same extension ID, Feed rendered dark with posts hidden and Notifications loaded dark and remained interactive. This establishes recovery in the tested session, not a controlled attribution of every prior hang or a guarantee against future LinkedIn layout changes. Tests cover synchronous shadow-rule installation and bounded, coalesced read/write batches in addition to existing routing, theme, editor and media checks.

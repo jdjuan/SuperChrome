@@ -51,10 +51,12 @@
   }
   function neutral(color) { return Math.max(...color.slice(0,3))-Math.min(...color.slice(0,3)) < 35; }
   function mark(element, suffix, value) {
+    if (writes) { writes.push([element,suffix,value]); return; }
     const attribute = prefix + suffix;
     if (value) { if (element.getAttribute(attribute) !== value) element.setAttribute(attribute, value); }
     else if (element.hasAttribute(attribute)) element.removeAttribute(attribute);
   }
+  let writes;
   function classify(element) {
     // Preserve photos, editable post/message markup and our
     // own shadow-root UI. Editors receive paired colors from the stylesheet.
@@ -83,30 +85,53 @@
   function refreshOverlays() {
     for (const host of document.querySelectorAll('[data-superchrome]')) globalThis.SuperChromeTheme?.apply(host);
   }
+  const remaining = new Set();
+  let scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(() => { scheduled = false; flush(); }, 0);
+  }
   function flush() {
     if (!enabled || !document.documentElement) return;
     connectMessaging();
     // Read the site's original colors, then restore our gate in the same task.
-    // Mutation delivery finishes before paint; no timer exposes white panels.
+    // Each bounded task restores the gate before yielding; baseline CSS covers new panels.
     document.documentElement.removeAttribute(active);
     for (const host of shadows.keys()) host.removeAttribute(active);
+    writes = [];
     try {
-      const roots = [...pending]; pending.clear();
+      // Drain a bounded batch and yield to input/navigation between batches.
+      const roots = new Set(pending); pending.clear();
+      const elements = new Set(remaining); remaining.clear();
       for (const root of roots) {
-        if (!root.isConnected || roots.some(other => other !== root && other.contains(root))) continue;
-        if (root.nodeType === 1) classify(root);
-        for (const element of root.querySelectorAll('*')) classify(element);
+        if (!root.isConnected) continue;
+        let ancestor = root.parentNode;
+        while (ancestor && !roots.has(ancestor)) ancestor = ancestor.parentNode;
+        if (ancestor) continue;
+        if (root.nodeType === 1) elements.add(root);
+        for (const element of root.querySelectorAll('*')) elements.add(element);
+      }
+      let count = 0;
+      for (const element of elements) {
+        if (!element.isConnected) continue;
+        if (count++ < 200) classify(element);
+        else remaining.add(element);
       }
     } finally {
+      const batch = writes; writes = null;
+      for (const [element,suffix,value] of batch) mark(element,suffix,value);
       document.documentElement.setAttribute(active, '');
       for (const host of shadows.keys()) host.setAttribute(active, '');
     }
     refreshOverlays();
+    if (remaining.size || pending.size) schedule();
   }
   function update() {
     if (!document.documentElement) return;
+    document.documentElement.setAttribute('data-sc-linkedin-theme-ready', '');
     document.documentElement.toggleAttribute(active, enabled);
-    pending.clear();
+    pending.clear(); remaining.clear();
     if (enabled) {
       pending.add(document.documentElement);
       for (const {root} of shadows.values()) pending.add(root);
@@ -124,7 +149,7 @@
       else for (const node of record.addedNodes) if (node.nodeType === 1) pending.add(node);
     }
     for (const {root,style} of shadows.values()) if (!style.isConnected) pending.add(root);
-    if (pending.size) flush();
+    if (pending.size) schedule();
   }
   const observerOptions = {childList:true, subtree:true, attributes:true, attributeFilter:['class','style','fill','stroke','color','bgcolor','contenteditable']};
   new MutationObserver(onMutations).observe(document, observerOptions);
@@ -137,5 +162,6 @@
     if (ready) return;
     ready = true; followSystem = settings.linkedinDarkMode !== false; syncTheme();
   }).catch(() => {});
+  document.addEventListener('__superchrome_shadow_attached', () => { if (enabled) { connectMessaging(); schedule(); } });
   document.addEventListener('DOMContentLoaded', () => { if (ready) update(); }, {once:true});
 })();

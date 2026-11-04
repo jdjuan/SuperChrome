@@ -1,4 +1,12 @@
 (() => {
+  if (['linkedin.com','www.linkedin.com'].includes(location.hostname)) {
+    const attach = Element.prototype.attachShadow;
+    Element.prototype.attachShadow = function (options) {
+      const root = Reflect.apply(attach, this, [options]);
+      if (this.id === 'interop-outlet') document.dispatchEvent(new Event('__superchrome_shadow_attached'));
+      return root;
+    };
+  }
   const origins = Array.from(location.ancestorOrigins || []);
   let host = '';
   try { host = new URL(origins.length ? origins[origins.length - 1] : location.href).hostname; } catch {}
