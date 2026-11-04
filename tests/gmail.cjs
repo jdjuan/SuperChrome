@@ -17,6 +17,17 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  assert.equal(body.innerHTML,original,'Message HTML stays intact');
  let control=body.previousSibling;assert.ok(control.hasAttribute('data-sc-gmail-control'));
  const button=control.shadowRoot.querySelector('button');button.click();assert.ok(body.hasAttribute('data-sc-gmail-original'));assert.equal(button.getAttribute('aria-pressed'),'true');button.click();assert.ok(!body.hasAttribute('data-sc-gmail-original'));
+ // Gmail inserts a white conversation shell before its message body. It must
+ // be dark by mutation delivery, before the browser gets a rendering opportunity.
+ const shell=w.document.createElement('section');shell.style.backgroundColor='white';shell.style.color='black';
+ shell.innerHTML='<header style="background-color:white;color:black">Message header</header><div class="a3s"><p>Body</p></div>';
+ w.document.querySelector('main').append(shell);await Promise.resolve();
+ assert.equal(shell.getAttribute('data-sc-gmail-bg'),'surface','New conversation shell is styled before the next task/paint');
+ assert.equal(shell.querySelector('header').getAttribute('data-sc-gmail-fg'),'text','New header is readable before paint');
+ assert.ok(shell.querySelector('.a3s').previousSibling.hasAttribute('data-sc-gmail-control'),'Message controls are also ready before paint');
+ shell.style.backgroundColor='rgb(200,220,255)';await Promise.resolve();
+ assert.equal(shell.getAttribute('data-sc-gmail-bg'),'accent','Reused message shells update before paint');
+ shell.remove();await Promise.resolve();
  const added=w.document.createElement('div');added.className='a3s';added.innerHTML='<p style="color:black;background-color:white">New message</p>';w.document.querySelector('main').append(added);await tick();assert.ok(added.previousSibling.hasAttribute('data-sc-gmail-control'));
  w.document.querySelector('#surface').style.backgroundColor='rgb(200,220,255)';await tick();assert.equal(w.document.querySelector('#surface').getAttribute('data-sc-gmail-bg'),'accent','Runtime Gmail color changes are reclassified');
  assert.equal(editor.outerHTML,draft);

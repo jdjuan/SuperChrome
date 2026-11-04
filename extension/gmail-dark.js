@@ -7,7 +7,7 @@
   // Never annotate an editor or insert controls in its serializable contents.
   const editorSelector = '[contenteditable="true"], [contenteditable=""], [role="textbox"], .editable';
   const excluded = `script, style, link, meta, img, picture, video, canvas, iframe, ${editorSelector}, ${editorSelector.split(', ').map(s => s + ' *').join(', ')}`;
-  let enabled = false, ready = false, pending = new Set(), scheduled = 0;
+  let enabled = false, ready = false, pending = new Set();
   const messages = new Map();
 
   function rgb(value) {
@@ -68,7 +68,6 @@
     }
   }
   function flush() {
-    scheduled = 0;
     if (!enabled || !document.documentElement) return;
     // Read Gmail's own colors with our stylesheet inactive. Restoring the gate
     // synchronously prevents a paint in between and avoids classifying our colors.
@@ -87,20 +86,19 @@
   function queue(root) {
     if (!enabled) return;
     pending.add(root?.nodeType === 1 ? root : document.documentElement);
-    if (!scheduled) scheduled = setTimeout(flush, 80);
   }
   function update() {
     if (!document.documentElement) return;
     document.documentElement.toggleAttribute(active, enabled);
     if (enabled) { pending.add(document.documentElement); flush(); }
     else {
-      clearTimeout(scheduled); scheduled = 0; pending.clear();
+      pending.clear();
       for (const [body, control] of messages) { control.remove(); body.removeAttribute('data-sc-gmail-original'); }
       messages.clear();
     }
   }
   const observer = new MutationObserver(records => {
-    if (!ready) return;
+    if (!ready || !globalThis.document?.documentElement) return;
     for (const record of records) {
       if (record.target.closest?.('[data-sc-gmail-control]')) continue;
       if (record.type === 'attributes') queue(record.target);
@@ -111,6 +109,9 @@
         if (record.removedNodes.length && messages.size) queue(record.target);
       }
     }
+    // Mutation observers run before rendering. Classify this entire mutation
+    // batch now: deferring to a timer lets new white message shells paint first.
+    if (enabled && pending.size) flush();
   });
   observer.observe(document, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style','bgcolor','color']});
   chrome.storage.onChanged.addListener((changes, area) => {
