@@ -123,3 +123,7 @@ Regression coverage includes pre-script hiding, delayed settings, the exact `/` 
 The wider sidebar names each tool explicitly: Hide Feed, Download Video, Video Stats, Popup Blocker, Brave YouTube and Dark Mode. Panels start with a title and a single short explanation. LinkedIn’s network reaction alert setting lives under Customize; download platforms have labeled icons. Popup Blocker keeps one global checkbox, the current-site action and a removable list of protected sites.
 
 Video Stats reads the open individual video using existing activeTab access, without new permissions or network requests. Facebook retains its matching-video metadata inspection and optional Watch link. YouTube reads page date/view metadata; Instagram reads matching VideoObject structured data when available; X reads the matching post timestamp and public view link when present. Matching structured video metadata is also supported on YouTube and X. Missing fields are reported explicitly. This does not provide private creator analytics, and availability depends on each page.
+
+## Fireball branding (3.8.1)
+
+The toolbar, extensions list and popup use the approved Chrome-inspired Fireball logo. Transparent PNG icons are supplied at 16, 32, 48 and 128 pixels, with a 512-pixel source retained in `extension/icons/fireball-source.png`. No permissions or manifest key changes. Verified the complete local test suite, release packaging and the reloaded Chrome extension at its stable ID.
