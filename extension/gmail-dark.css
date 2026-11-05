@@ -14,6 +14,10 @@ html[data-sc-gmail-dark] [data-sc-gmail-fill="icon"]:not([data-sc-gmail-sampling
 html[data-sc-gmail-dark] [data-sc-gmail-stroke="icon"]:not([data-sc-gmail-sampling]) { stroke:#bdc1c6!important; }
 /* Only Gmail's monochrome sprite icons; photos, logos and colored stars stay intact. */
 html[data-sc-gmail-dark] :is(.T-I-J3,.qj,.G-asx,.aAu,.d-Na-J3,.ajz,.aaA,.dv,.J-Z-M-I-JG,.J-JN-M-I-JG):not(.a3s *) { filter:brightness(0) invert(.85)!important; }
+/* Row actions and unchecked markers use light-theme raster assets, not text.
+   Filter only neutral states; Gmail keeps its colored star/important assets. */
+html[data-sc-gmail-dark] :is(.bqX,.T-Jo,.pG[aria-checked="false"] .pH-A7):not(.a3s *) { filter:brightness(0) invert(.85)!important; opacity:1!important; }
+html[data-sc-gmail-dark] .T-KT:not(.T-KT-Je):not(.a3s *)::before { filter:brightness(0) invert(.85)!important; opacity:1!important; }
 /* Preserve unread, selected and hover distinctions even when Gmail uses white. */
 html[data-sc-gmail-dark] .zA.zE { background:#292c31!important; font-weight:700; }
 html[data-sc-gmail-dark] .zA.yO { background:#202124!important; }

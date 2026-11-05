@@ -20,6 +20,15 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  system.system(true);system.change(false);system.system(false);system.system(true);
  assert.ok(!system.w.document.documentElement.hasAttribute('data-sc-gmail-dark'),'Opt-out survives system changes');system.d.window.close();
 
+ // Raster controls must remain bright on selected rows and restore with the theme.
+ const icons=setup({html:'<style>.T-Jo,.pH-A7{opacity:.32}</style><main><div class="zA x7"><div class="T-Jo"></div><div class="bqX"></div><div class="pG" aria-checked="false"><div class="pH-A7"></div></div><div class="pG" aria-checked="true"><div class="pH-A7"></div></div></div></main>'});await tick();
+ for(const node of icons.w.document.querySelectorAll('.T-Jo,.bqX,.pG[aria-checked="false"] .pH-A7')){
+  assert.equal(icons.w.getComputedStyle(node).filter,'brightness(0) invert(.85)');
+  assert.equal(icons.w.getComputedStyle(node).opacity,'1');
+ }
+ assert.notEqual(icons.w.getComputedStyle(icons.w.document.querySelector('.pG[aria-checked="true"] .pH-A7')).filter,'brightness(0) invert(.85)','Colored important state is preserved');
+ icons.system(false);assert.equal(icons.w.getComputedStyle(icons.w.document.querySelector('.T-Jo')).opacity,'0.32');
+ icons.system(true);assert.equal(icons.w.getComputedStyle(icons.w.document.querySelector('.T-Jo')).opacity,'1');icons.d.window.close();
  const x=setup(),{w}=x;const editor=w.document.querySelector('[contenteditable]'),draft=editor.outerHTML;
  const body=w.document.querySelector('.a3s'),original=body.innerHTML;await tick();
  assert.ok(w.document.documentElement.hasAttribute('data-sc-gmail-dark'));
