@@ -13,6 +13,7 @@
   const attribute = 'data-superchrome-linkedin-focus';
   const contentAttribute = 'data-superchrome-linkedin-home-content';
   let enabled = true, style, lastUrl, message, timer, revealUntil = 0;
+  let settingsReady = false, focusChanged = false, revealChanged = false;
   const setText=(element,text)=>{if(element.textContent!==text)element.textContent=text;};
   async function reveal(minutes) {
     try { await chrome.storage.local.set({linkedinRevealUntil:Date.now()+minutes*60000}); }
@@ -37,7 +38,7 @@
       const sheet = document.createElement('style');
       sheet.dataset.superchrome = 'linkedin-shadow-focus';
       sheet.textContent = `:host([${shadowFocus}]) :is(${postSelector}):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *) { display: none !important; }`;
-      const observer = new MutationObserver(() => syncShadow(document.documentElement.hasAttribute(attribute)));
+      const observer = new MutationObserver(() => { if (globalThis.document?.documentElement) syncShadow(document.documentElement.hasAttribute(attribute)); });
       observer.observe(root, {childList:true, subtree:true});
       entry = {sheet, observer}; shadowEntries.set(host, entry);
     }
@@ -46,11 +47,12 @@
     if (!host.hasAttribute(shadowReady)) host.setAttribute(shadowReady, '');
   }
   function update() {
-    if (!document.documentElement) return;
+    if (!globalThis.document?.documentElement) return;
     lastUrl = location.href;
     const route = routeUrl();
     const highlighted = route.searchParams.get('highlightedUpdateUrn');
-    const home = ['/feed','/feed/'].includes(route.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
+    // Signed-in LinkedIn paints feed posts at / before replacing its URL with /feed/.
+    const home = ['/','/feed','/feed/'].includes(route.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
     const revealing = enabled && home && revealUntil > Date.now();
     const active = enabled && home && !revealing;
     document.documentElement.toggleAttribute('data-superchrome-linkedin-revealed', revealing);
@@ -75,8 +77,11 @@
       style.textContent = `${selector}, html[${attribute}] :is(main, [role="main"]) [${contentAttribute}] { display: none !important; }`;
       document.documentElement.append(style);
     }
-    // The manifest stylesheet covers the first paint until route-aware rules exist.
-    document.documentElement.setAttribute('data-superchrome-linkedin-initialized', '');
+    // Release startup CSS only after a visibility decision, not merely script startup.
+    // Known non-feed routes can open immediately. Home stays protected while
+    // preferences load; the installed rules cover future posts and shadow hosts.
+    document.documentElement.toggleAttribute('data-superchrome-linkedin-visibility-ready',
+      style.isConnected && (!home || settingsReady));
     if (!active) { message?.remove(); return; }
     const main = document.querySelector('main, [role="main"]');
     if (!main) return;
@@ -115,8 +120,17 @@
     globalThis.SuperChromeTheme?.apply(message);
   }
   update();
-  chrome.storage.local.get({linkedinFocus:true,linkedinRevealUntil:0}).then(settings=>{enabled=settings.linkedinFocus!==false;revealUntil=Number(settings.linkedinRevealUntil)||0;update();}).catch(()=>{});
-  chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.linkedinFocus)enabled=changes.linkedinFocus.newValue!==false;if(changes.linkedinRevealUntil)revealUntil=Number(changes.linkedinRevealUntil.newValue)||0;if(changes.linkedinFocus||changes.linkedinRevealUntil)update();});
+  chrome.storage.local.get({linkedinFocus:true,linkedinRevealUntil:0}).then(settings=>{
+    if (!focusChanged) enabled=settings.linkedinFocus!==false;
+    if (!revealChanged) revealUntil=Number(settings.linkedinRevealUntil)||0;
+    settingsReady=true;update();
+  }).catch(()=>{settingsReady=true;update();}); // Safe default: keep Home hidden.
+  chrome.storage.onChanged.addListener((changes,area)=>{
+    if(area!=='local')return;
+    if(changes.linkedinFocus){focusChanged=true;enabled=changes.linkedinFocus.newValue!==false;}
+    if(changes.linkedinRevealUntil){revealChanged=true;revealUntil=Number(changes.linkedinRevealUntil.newValue)||0;}
+    if(changes.linkedinFocus||changes.linkedinRevealUntil)update();
+  });
   // Reconcile new Home layouts and loading containers as LinkedIn replaces DOM.
   new MutationObserver(update).observe(document,{childList:true,subtree:true});
   document.addEventListener('__superchrome_shadow_attached', update);

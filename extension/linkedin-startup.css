@@ -1,11 +1,12 @@
-/* Loaded before page content; route-aware JavaScript takes over synchronously. */
-html:not([data-superchrome-linkedin-initialized]) :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *) {
+/* Loaded before page content. Keep this protection until route and preferences
+   resolve visibility and the persistent hiding rules have been installed. */
+html:not([data-superchrome-linkedin-visibility-ready]) :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *) {
   display: none !important;
 }
 
 /* LinkedIn transplants its legacy startup UI into an open shadow root. Cover
    the host until its own stylesheet exists; page CSS cannot hide its posts. */
-html:not([data-superchrome-linkedin-initialized]) #interop-outlet,
+html:not([data-superchrome-linkedin-visibility-ready]) #interop-outlet,
 html[data-superchrome-linkedin-focus] #interop-outlet:not([data-superchrome-linkedin-shadow-ready]) {
   opacity: 0 !important;
   pointer-events: none !important;
