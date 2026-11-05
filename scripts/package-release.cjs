@@ -14,7 +14,7 @@ let helperPrompt='';w.navigator.clipboard={writeText:async text=>{helperPrompt=t
 w.chrome={runtime:{id:'lfbikaodomamodnmfheahbcbkdkaggai',sendMessage:(m,cb)=>cb({ok:false})},tabs:{query:(q,cb)=>cb([])},storage:{onChanged:{addListener:()=>{}}}};
 w.eval(fs.readFileSync(path.join(ext,'helper-setup.js'),'utf8'));w.eval(fs.readFileSync(path.join(ext,'download-popup.js'),'utf8'));w.document.getElementById('copy-helper-prompt').click();
 fs.writeFileSync(path.join(out,'helper-setup.txt'),helperPrompt);
-fs.writeFileSync(path.join(ext,'INSTALL.txt'),'Open chrome://extensions or brave://extensions. Enable Developer mode, select Load unpacked and choose this folder containing manifest.json. Keep this folder in a permanent location. For video downloads, open Save and Copy Prompt to install the optional helper. Updates: replace files in place, reload the extension, and refresh website tabs. Never uninstall to update; browser settings persist under the same extension ID.');
+fs.writeFileSync(path.join(ext,'INSTALL.txt'),'Open chrome://extensions or brave://extensions. Enable Developer mode, select Load unpacked and choose this folder containing manifest.json. Keep this folder in a permanent location. For video downloads, open Download Video and Copy Prompt to install the optional helper. Updates: replace files in place, reload the extension, and refresh website tabs. Never uninstall to update; browser settings persist under the same extension ID.');
 const zip=path.join(out,'SuperChrome.zip');fs.rmSync(zip,{force:true});cp.execFileSync('zip',['-q','-r',zip,'SuperChrome'],{cwd:stage});
 const hash=crypto.createHash('sha256').update(fs.readFileSync(zip)).digest('hex');
 fs.writeFileSync(path.join(out,'SHA256SUMS.txt'),`${hash}  SuperChrome.zip\n`);

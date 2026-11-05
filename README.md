@@ -19,7 +19,7 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 
 1. [Download the latest release](https://github.com/jdjuan/SuperChrome/releases/latest/download/SuperChrome.zip) and unzip to a permanent folder.
 2. Open `chrome://extensions` or `brave://extensions`, enable Developer mode and choose **Load unpacked**. Select `SuperChrome`, the folder containing `manifest.json`.
-3. Pin the extension and choose your tools. For video downloads, open **Save → Copy Prompt** and give the setup instructions to an AI with local computer access.
+3. Pin the extension and choose your tools. For video downloads, open **Download Video → Copy Prompt** and give the setup instructions to an AI with local computer access.
 
 Cloning this repo is also supported: load its `extension` folder. The manifest key preserves extension ID `lfbikaodomamodnmfheahbcbkdkaggai`. A clone alone does not install/register the download helper.
 
@@ -116,3 +116,10 @@ Signed-in LinkedIn can paint feed posts at `/` before replacing the address with
 Root `/` now receives the same feed hiding rules, including in the legacy preload frame. The startup stylesheet remains active on Home until preferences have resolved and persistent hiding rules have been installed. A separate visibility-ready attribute replaces the unconditional initialized marker. Protected shadow hosts remain covered until their scoped styles are ready. Explicit non-feed destinations open without waiting for settings, while saved breaks and disabled focus restore content once loaded. Storage failure keeps the safe default of hiding Home; a late settings read cannot overwrite a newer preference change. No new permissions or page-wide color recalculations are introduced.
 
 Regression coverage includes pre-script hiding, delayed settings, the exact `/` to `/feed/` sequence without waiting for polling, legacy and modern posts, shadow attachment, preload frames, storage failures/races, saved breaks and non-feed destinations. After Juan reloaded the unpacked extension, a fresh Chrome visit to `https://www.linkedin.com/` reached `/feed/` with posts hidden and the new visibility-ready gate active; the old initialized marker was absent. A screenshot confirmed the dark focus surface. The browser snapshot did not capture every startup frame; the no-gap `/` to `/feed/` behavior is additionally covered by the regression tests.
+
+
+## Settings clarity (3.8.0)
+
+The wider sidebar names each tool explicitly: Hide Feed, Download Video, Video Stats, Popup Blocker, Brave YouTube and Dark Mode. Panels start with a title and a single short explanation. LinkedIn’s network reaction alert setting lives under Customize; download platforms have labeled icons. Popup Blocker keeps one global checkbox, the current-site action and a removable list of protected sites.
+
+Video Stats reads the open individual video using existing activeTab access, without new permissions or network requests. Facebook retains its matching-video metadata inspection and optional Watch link. YouTube reads page date/view metadata; Instagram reads matching VideoObject structured data when available; X reads the matching post timestamp and public view link when present. Matching structured video metadata is also supported on YouTube and X. Missing fields are reported explicitly. This does not provide private creator analytics, and availability depends on each page.

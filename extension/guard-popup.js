@@ -13,7 +13,7 @@
       const li=document.createElement('li'),text=document.createElement('div'),name=document.createElement('strong'),small=document.createElement('small'),button=document.createElement('button');
       name.textContent=title;small.textContent=detail;text.append(name,small);button.textContent='Remove';button.setAttribute('aria-label','Remove '+title);button.disabled=saving;button.onclick=()=>save(remove);li.append(text,button);list.append(li);
     }
-    for(const [key,name,detail] of defaults)if(settings.sites['@'+key]!==false)row(name,detail+' · Included by default'+(Object.keys(settings.sites).some(h=>guardPolicy.family(h)===key&&settings.sites[h]===false)?' · Has site exceptions':''),sites=>{sites['@'+key]=false;for(const keyHost of Object.keys(sites))if(guardPolicy.family(keyHost)===key)sites[keyHost]=false;});
+    for(const [key,name,detail] of defaults)if(settings.sites['@'+key]!==false)row(name,detail+(Object.keys(settings.sites).some(h=>guardPolicy.family(h)===key&&settings.sites[h]===false)?' · Has site exceptions':''),sites=>{sites['@'+key]=false;for(const keyHost of Object.keys(sites))if(guardPolicy.family(keyHost)===key)sites[keyHost]=false;});
     for(const [value,on] of Object.entries(settings.sites))if(on===true&&!value.startsWith('@')&&!(guardPolicy.family(value)&&settings.sites['@'+guardPolicy.family(value)]!==false))row(siteName(value),value,sites=>{sites[value]=false;});
     find('guard-count').textContent=String(list.children.length);
     if(!list.children.length){const li=document.createElement('li');li.textContent='No websites added. Add the open website above.';list.append(li);}
