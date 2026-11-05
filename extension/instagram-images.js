@@ -12,7 +12,30 @@
   const buttons = new Map();
   let scheduled = false;
   const sourceFor = img => img.currentSrc || img.src;
+  function videoUrl(video) {
+    if (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname)) return location.href;
+    const scope = video.closest('article') || video.closest('main') || document;
+    const link = [...scope.querySelectorAll('a[href]')].find(a => /^\/(p|reel|reels)\/[^/]+/.test(new URL(a.href).pathname));
+    return link?.href || (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname) ? location.href : null);
+  }
   async function save(img, button) {
+    if (img.tagName === 'VIDEO') {
+      button.disabled = true;
+      button.textContent = '…';
+      button.title = 'Starting video download…';
+      try {
+        const url = videoUrl(img);
+        if (!url) throw Error('Open this video’s post first.');
+        const result = await chrome.runtime.sendMessage({action: 'download', url});
+        if (!result?.ok) throw Error(result?.error || 'Video helper unavailable.');
+        button.textContent = '✓';
+        button.title = 'Video download started. See Download Video for progress.';
+      } catch (error) {
+        button.textContent = '!';
+        button.title = `${error.message} Click to retry.`;
+      } finally { button.disabled = false; }
+      return;
+    }
     button.disabled = true;
     button.textContent = '…';
     button.title = 'Downloading image…';
@@ -46,14 +69,25 @@
     scheduled = false;
     if (!host.isConnected) document.documentElement.append(host);
     const found = new Set();
-    for (const img of document.querySelectorAll('article img, main img')) {
-      if (!img.closest('article') && !/^\/p\//.test(location.pathname)) continue;
+    for (const img of document.querySelectorAll('article img, main img, video')) {
+      if (!img.closest('article') && !/^\/(p|reel|reels)\//.test(location.pathname)) continue;
+      if (img.tagName === 'IMG' && img.parentElement?.querySelector('video')) continue;
+      const kind = img.tagName === 'VIDEO' ? 'video' : 'image';
       const rect = img.getBoundingClientRect();
       if (rect.width < 180 || rect.height < 180 || rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth || !img.getClientRects().length || getComputedStyle(img).visibility === 'hidden') continue;
       // Carousel slides outside their clipping container must not get controls.
       const x = Math.min(rect.right, innerWidth) - 22, y = Math.max(rect.top, 0) + 22;
       const hit = document.elementFromPoint?.(x, y);
-      const media = img.closest('._aagu') || img.parentElement;
+      let media = img.closest('._aagu') || img.parentElement;
+      if (kind === 'video') {
+        // Instagram places its interaction surface beside deeply nested video wrappers.
+        for (let parent = img.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+          const bounds = parent.getBoundingClientRect();
+          if (Math.abs(bounds.width - rect.width) > 2 || Math.abs(bounds.height - rect.height) > 2) break;
+          media = parent;
+          if (hit && parent.contains(hit)) break;
+        }
+      }
       if (hit && hit !== host && hit !== img && !media.contains(hit)) continue;
       found.add(img);
       let button = buttons.get(img);
@@ -61,8 +95,8 @@
         button = document.createElement('button');
         button.type = 'button';
         button.textContent = '↓';
-        button.title = 'Download image';
-        button.setAttribute('aria-label', 'Download Instagram image');
+        button.title = `Download ${kind}`;
+        button.setAttribute('aria-label', `Download Instagram ${kind}`);
         button.addEventListener('click', event => {event.preventDefault(); event.stopPropagation(); save(img, button);});
         shadow.append(button);
         buttons.set(img, button);

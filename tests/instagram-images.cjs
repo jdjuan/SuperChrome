@@ -12,5 +12,13 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  button.click();await new Promise(setImmediate);assert.equal(fetched,img.src);assert.match(download,/^instagram-\d+\.jpg$/);assert.equal(button.textContent,'✓');assert.equal(button.disabled,false);
  w.fetch=async()=>{throw Error('blocked')};button.click();await new Promise(setImmediate);assert.match(button.title,/retry/);assert.equal(button.disabled,false);
  img.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();assert.equal(host.shadowRoot.querySelector('button'),null);
+ const video=w.document.createElement('video');w.document.querySelector('article').append(video);
+ video.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});video.getClientRects=()=>[{}];
+ w.document.elementFromPoint=()=>video;
+ let request;w.chrome={runtime:{sendMessage:async message=>{request=message;return {ok:true}}}};
+ await new Promise(setImmediate);while(frames.length)frames.shift()();
+ button=host.shadowRoot.querySelector('button');assert.equal(button.title,'Download video');button.click();await new Promise(setImmediate);
+ assert.deepEqual(JSON.parse(JSON.stringify(request)),{action:'download',url:w.location.href});assert.equal(button.textContent,'✓');
+ w.chrome.runtime.sendMessage=async()=>({error:'Helper unavailable'});button.click();await new Promise(setImmediate);assert.match(button.title,/Helper unavailable.*retry/);
  dom.window.close();console.log('PASS: Instagram image button targeting, direct image save, retry, and dynamic cleanup.');
 })().catch(e=>{console.error(e);process.exit(1)});
