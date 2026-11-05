@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Facebook reel details, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -18,10 +18,10 @@
     "default_popup": "popup.html",
     "default_title": "SuperChrome",
     "default_icon": {
-      "16": "icons/16.png",
-      "32": "icons/32.png",
-      "48": "icons/48.png",
-      "128": "icons/128.png"
+      "16": "icons/toolbar-16.png",
+      "32": "icons/toolbar-32.png",
+      "48": "icons/toolbar-48.png",
+      "128": "icons/toolbar-128.png"
     }
   },
   "content_scripts": [

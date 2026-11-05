@@ -127,3 +127,7 @@ Video Stats reads the open individual video using existing activeTab access, wit
 ## Fireball branding (3.8.1)
 
 The toolbar, extensions list and popup use the approved Chrome-inspired Fireball logo. Transparent PNG icons are supplied at 16, 32, 48 and 128 pixels, with a 512-pixel source retained in `extension/icons/fireball-source.png`. No permissions or manifest key changes. Verified the complete local test suite, release packaging and the reloaded Chrome extension at its stable ID.
+
+### Larger toolbar mark (3.8.2)
+
+Toolbar-only PNGs remove the source artwork's transparent margins, increasing the visible mark by approximately 18% within Chrome's fixed icon slot. The popup and extension-management artwork retain their existing padding. The full local test suite and release packaging pass. Chrome reload remains manual because concurrent browser interaction interrupted UI verification.
