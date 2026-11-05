@@ -21,6 +21,17 @@
     const link = [...scope.querySelectorAll('a[href]')].find(a => /^\/(p|reel|reels)\/[^/]+/.test(new URL(a.href).pathname));
     return link?.href || (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname) ? location.href : null);
   }
+  function videoSelection(video) {
+    const slide = video.closest('li');
+    if (!slide) return {};
+    const width = slide.getBoundingClientRect().width;
+    const offset = element => Number(element.style.transform.match(/translateX\(([-\d.]+)px\)/)?.[1]);
+    if (!width || !slide.style.transform.includes('translateX')) throw Error('Cannot identify this slide. Open its individual post.');
+    const position = offset(slide) / width;
+    if (!Number.isFinite(position) || Math.abs(position - Math.round(position)) > 0.02) throw Error('Cannot identify this slide.');
+    const end = Math.max(...[...slide.parentElement.children].map(item => offset(item) + item.getBoundingClientRect().width));
+    return {slide: Math.round(position) + 1, slideCount: Math.round(end / width), poster: video.poster || ''};
+  }
   function showVideoStatus(button, job) {
     const done = typeof job.ok === 'boolean';
     button.disabled = !done;
@@ -40,7 +51,7 @@
     if (area !== 'local' || !job?.url) return;
     latestJob = job;
     for (const [media, button] of buttons) {
-      if (media.tagName === 'VIDEO' && videoUrl(media) === job.url) showVideoStatus(button, job);
+      if (media.tagName === 'VIDEO' && videoUrl(media) === job.url && (!job.slide || videoSelection(media).slide === job.slide)) showVideoStatus(button, job);
     }
   });
   async function save(img, button) {
@@ -49,7 +60,7 @@
       try {
         const url = videoUrl(img);
         if (!url) throw Error('Open this video’s post first.');
-        const result = await chrome.runtime.sendMessage({action: 'download', url});
+        const result = await chrome.runtime.sendMessage({action: 'download', url, ...videoSelection(img)});
         if (!result?.ok) throw Error(result?.error || 'Video helper unavailable.');
         // Native job updates report actual progress and completion.
       } catch (error) {
@@ -127,7 +138,7 @@
         button.status = status;
         shadow.append(button, status);
         buttons.set(img, button);
-        if (kind === 'video' && latestJob?.url === videoUrl(img)) showVideoStatus(button, latestJob);
+        if (kind === 'video' && latestJob?.url === videoUrl(img) && (!latestJob.slide || videoSelection(img).slide === latestJob.slide)) showVideoStatus(button, latestJob);
       }
       button.style.left = `${x - 15}px`;
       button.style.top = `${y - 15}px`;

@@ -135,3 +135,7 @@ Toolbar-only PNGs remove the source artwork's transparent margins, increasing th
 ### Instagram download feedback (3.8.4)
 
 The on-video arrow stays busy until the helper finishes. An adjacent status shows download progress, MP4 preparation, completion in Downloads, or the actual error with a retry instruction. A checkmark means the helper confirmed completion. Status follows Instagram replacing the player element. No permissions were added.
+
+### Carousel downloads (3.8.5)
+
+The Instagram on-video arrow saves only the visible carousel slide, including virtualized slides. The helper checks carousel metadata before selecting an entry. If a mixed carousel cannot be matched safely, it reports an error instead of downloading other slides. Popup URL downloads can still produce multiple entries; every output now receives compatible MP4 conversion. No permissions were added.

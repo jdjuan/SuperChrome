@@ -20,25 +20,41 @@ def main():
  folder=Path.home()/'Downloads';folder.mkdir(parents=True,exist_ok=True)
  yt_dlp=shutil.which('yt-dlp');ffmpeg=shutil.which('ffmpeg')
  if not yt_dlp or not ffmpeg:raise ValueError('Install yt-dlp and FFmpeg first')
- args=[yt_dlp,'--ignore-config','--no-playlist','--no-overwrites','--newline','--progress','--socket-timeout','30','--ffmpeg-location',str(Path(ffmpeg).parent),'--print','after_move:filepath','--no-simulate','-f','bv*[vcodec^=avc1]+ba[ext=m4a]/b[vcodec^=avc1]/best','--merge-output-format','mp4','-o',str(folder/'%(title).150B [%(id)s].%(ext)s'),'--',url]
+ selection=[]
+ slide=request.get('slide')
+ if slide is not None:
+  if parsed.hostname not in {'instagram.com','www.instagram.com'} or type(slide) is not int or not 1<=slide<=100:raise ValueError('Invalid carousel slide')
+  send({'message':'Finding selected carousel slide…'})
+  metadata=subprocess.run([yt_dlp,'--ignore-config','--skip-download','--dump-single-json','--socket-timeout','30','--',url],capture_output=True,text=True,check=True)
+  info=json.loads(metadata.stdout)
+  entries=info.get('entries')
+  if entries:
+   poster=urlsplit(request.get('poster') or '').path.rsplit('/',1)[-1]
+   matches=[i for i,e in enumerate(entries,1) if poster and any(urlsplit(t.get('url','')).path.rsplit('/',1)[-1]==poster for t in e.get('thumbnails',[]))]
+   if len(matches)==1:index=matches[0]
+   elif len(entries)==request.get('slideCount') and slide<=len(entries):index=slide
+   else:raise ValueError('Could not safely identify the selected video in this mixed carousel. Open its individual post and retry.')
+   selection=['--playlist-items',str(index)]
+ args=[yt_dlp,*selection,'--ignore-config','--no-playlist','--no-overwrites','--newline','--progress','--socket-timeout','30','--ffmpeg-location',str(Path(ffmpeg).parent),'--print','after_move:filepath','--no-simulate','-f','bv*[vcodec^=avc1]+ba[ext=m4a]/b[vcodec^=avc1]/best','--merge-output-format','mp4','-o',str(folder/'%(title).150B [%(id)s].%(ext)s'),'--',url]
  process=subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
- tail=[];output=None
+ tail=[];outputs=[]
  for line in process.stdout:
   line=line.strip()
-  if line and Path(line).is_file():output=Path(line)
+  if line and len(line)<4096 and Path(line).is_file() and Path(line) not in outputs:outputs.append(Path(line))
   if line:tail.append(line);tail=tail[-8:];send({'message':line})
  code=process.wait()
  if code==0:
-  if not output:raise ValueError('Download output could not be verified')
-  send({'message':'Preparing compatible MP4…'})
-  converted=output.with_name(output.stem+'.compatible.mp4')
-  try:
-   subprocess.run([ffmpeg,'-v','error','-nostdin','-y','-i',str(output),'-map','0:v:0','-map','0:a:0?','-c:v','libx264','-crf','20','-preset','fast','-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-movflags','+faststart',str(converted)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-   target=output.with_suffix('.mp4')
-   converted.replace(target)
-   if output!=target:output.unlink()
-  finally:
-   converted.unlink(missing_ok=True)
+  if not outputs:raise ValueError('Download output could not be verified')
+  for output in outputs:
+   send({'message':'Preparing compatible MP4…'})
+   converted=output.with_name(output.stem+'.compatible.mp4')
+   try:
+    subprocess.run([ffmpeg,'-v','error','-nostdin','-y','-i',str(output),'-map','0:v:0','-map','0:a:0?','-c:v','libx264','-crf','20','-preset','fast','-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-movflags','+faststart',str(converted)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+    target=output.with_suffix('.mp4')
+    converted.replace(target)
+    if output!=target:output.unlink()
+   finally:
+    converted.unlink(missing_ok=True)
  send({'ok':code==0,'message':('Saved to '+str(folder)) if code==0 else 'Download failed. '+ '\n'.join(tail)})
 if __name__=='__main__':
  try:main()

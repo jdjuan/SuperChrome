@@ -30,5 +30,10 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  video.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();
  w.document.querySelector('article').append(video);await new Promise(setImmediate);while(frames.length)frames.shift()();
  button=host.shadowRoot.querySelector('button');assert.match(button.status.textContent,/Helper disconnected/);
+ const list=w.document.createElement('ul');const spacer=w.document.createElement('li');spacer.style.transform='translateX(3999px)';spacer.getBoundingClientRect=()=>({width:1});list.append(spacer);
+ const slide=w.document.createElement('li');slide.style.transform='translateX(1000px)';slide.getBoundingClientRect=()=>({width:500});slide.append(video);list.append(slide);w.document.querySelector('article').append(list);
+ onJob({job:{newValue:{url:w.location.href,slide:3,ok:true}}},'local');
+ button.disabled=false;w.chrome.runtime.sendMessage=async m=>{request=m;return {ok:true}};button.click();await new Promise(setImmediate);
+ assert.equal(request.slide,3);assert.equal(request.slideCount,8);
  dom.window.close();console.log('PASS: Instagram image button targeting, direct image save, retry, and dynamic cleanup.');
 })().catch(e=>{console.error(e);process.exit(1)});
