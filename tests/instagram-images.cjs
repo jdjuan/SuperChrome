@@ -1,6 +1,7 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
 (async()=>{
  const dom=new JSDOM('<main><article><div class="_aagu"><div><img id="photo" src="https://cdn.example/photo.jpg"></div><div id="interaction-layer"></div></div><img id="avatar"></article></main>',{url:'https://www.instagram.com/p/test/',runScripts:'outside-only'}),w=dom.window;
+ let onJob;w.chrome={storage:{onChanged:{addListener:fn=>onJob=fn}},runtime:{}};
  const frames=[];w.requestAnimationFrame=fn=>frames.push(fn);
  const img=w.document.querySelector('#photo');img.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});img.getClientRects=()=>[{}];
  let fetched,download;w.fetch=async url=>{fetched=url;return {ok:true,blob:async()=>({type:'image/jpeg'})}};
@@ -18,7 +19,16 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  let request;w.chrome={runtime:{sendMessage:async message=>{request=message;return {ok:true}}}};
  await new Promise(setImmediate);while(frames.length)frames.shift()();
  button=host.shadowRoot.querySelector('button');assert.equal(button.title,'Download video');button.click();await new Promise(setImmediate);
- assert.deepEqual(JSON.parse(JSON.stringify(request)),{action:'download',url:w.location.href});assert.equal(button.textContent,'✓');
- w.chrome.runtime.sendMessage=async()=>({error:'Helper unavailable'});button.click();await new Promise(setImmediate);assert.match(button.title,/Helper unavailable.*retry/);
+ assert.deepEqual(JSON.parse(JSON.stringify(request)),{action:'download',url:w.location.href});assert.equal(button.textContent,'…');assert.equal(button.disabled,true);
+ onJob({job:{newValue:{url:w.location.href,message:'[download]  42.5% of 2MiB'}}},'local');
+ assert.equal(button.status.textContent,'Downloading 42.5%');
+ onJob({job:{newValue:{url:'https://www.instagram.com/p/other/',ok:true}}},'local');assert.equal(button.disabled,true);
+ onJob({job:{newValue:{url:w.location.href,message:'Preparing compatible MP4…'}}},'local');assert.match(button.status.textContent,/Preparing/);
+ onJob({job:{newValue:{url:w.location.href,ok:true}}},'local');assert.equal(button.textContent,'✓');assert.equal(button.disabled,false);assert.equal(button.status.textContent,'Saved to Downloads');
+ w.chrome.runtime.sendMessage=async()=>({error:'Helper unavailable'});button.click();await new Promise(setImmediate);assert.match(button.title,/Helper unavailable.*retry/);assert.equal(button.status.hidden,false);
+ onJob({job:{newValue:{url:w.location.href,ok:false,message:'Helper disconnected'}}},'local');assert.match(button.status.textContent,/Helper disconnected/);assert.equal(button.disabled,false);
+ video.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();
+ w.document.querySelector('article').append(video);await new Promise(setImmediate);while(frames.length)frames.shift()();
+ button=host.shadowRoot.querySelector('button');assert.match(button.status.textContent,/Helper disconnected/);
  dom.window.close();console.log('PASS: Instagram image button targeting, direct image save, retry, and dynamic cleanup.');
 })().catch(e=>{console.error(e);process.exit(1)});

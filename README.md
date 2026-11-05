@@ -131,3 +131,7 @@ The toolbar, extensions list and popup use the approved Chrome-inspired Fireball
 ### Larger toolbar mark (3.8.2)
 
 Toolbar-only PNGs remove the source artwork's transparent margins, increasing the visible mark by approximately 18% within Chrome's fixed icon slot. The popup and extension-management artwork retain their existing padding. The full local test suite and release packaging pass. Chrome reload remains manual because concurrent browser interaction interrupted UI verification.
+
+### Instagram download feedback (3.8.4)
+
+The on-video arrow stays busy until the helper finishes. An adjacent status shows download progress, MP4 preparation, completion in Downloads, or the actual error with a retry instruction. A checkmark means the helper confirmed completion. Status follows Instagram replacing the player element. No permissions were added.

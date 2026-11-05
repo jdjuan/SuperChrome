@@ -8,9 +8,12 @@
     button { all: initial; box-sizing: border-box; position: fixed; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #606060; border-radius: 50%; background: #202020; color: #fff; cursor: pointer; pointer-events: auto; opacity: 1; font: 18px/1 system-ui; }
     button:hover, button:focus-visible { background: #383838; outline: 2px solid white; outline-offset: 2px; }
     button:disabled { cursor: wait; }
+    .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
+    .status[hidden] { display: none; }
   </style>`;
   const buttons = new Map();
   let scheduled = false;
+  let latestJob = null;
   const sourceFor = img => img.currentSrc || img.src;
   function videoUrl(video) {
     if (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname)) return location.href;
@@ -18,22 +21,40 @@
     const link = [...scope.querySelectorAll('a[href]')].find(a => /^\/(p|reel|reels)\/[^/]+/.test(new URL(a.href).pathname));
     return link?.href || (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname) ? location.href : null);
   }
+  function showVideoStatus(button, job) {
+    const done = typeof job.ok === 'boolean';
+    button.disabled = !done;
+    button.textContent = done ? (job.ok ? '✓' : '!') : '…';
+    const raw = job.message || job.error || 'Downloading…';
+    const percent = raw.match(/\[download\]\s+(\d+(?:\.\d+)?%)/)?.[1];
+    const message = done ? (job.ok ? 'Saved to Downloads' : `${raw} Click to retry.`)
+      : raw.includes('Preparing compatible') ? 'Preparing compatible MP4…'
+      : raw.includes('already been downloaded') ? 'Video already exists. Checking MP4…'
+      : percent ? `Downloading ${percent}` : 'Downloading…';
+    button.title = message;
+    button.status.textContent = message;
+    button.status.hidden = false;
+  }
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    const job = changes.job?.newValue;
+    if (area !== 'local' || !job?.url) return;
+    latestJob = job;
+    for (const [media, button] of buttons) {
+      if (media.tagName === 'VIDEO' && videoUrl(media) === job.url) showVideoStatus(button, job);
+    }
+  });
   async function save(img, button) {
     if (img.tagName === 'VIDEO') {
-      button.disabled = true;
-      button.textContent = '…';
-      button.title = 'Starting video download…';
+      showVideoStatus(button, {message: 'Starting download…'});
       try {
         const url = videoUrl(img);
         if (!url) throw Error('Open this video’s post first.');
         const result = await chrome.runtime.sendMessage({action: 'download', url});
         if (!result?.ok) throw Error(result?.error || 'Video helper unavailable.');
-        button.textContent = '✓';
-        button.title = 'Video download started. See Download Video for progress.';
+        // Native job updates report actual progress and completion.
       } catch (error) {
-        button.textContent = '!';
-        button.title = `${error.message} Click to retry.`;
-      } finally { button.disabled = false; }
+        showVideoStatus(button, {ok: false, message: error.message});
+      }
       return;
     }
     button.disabled = true;
@@ -98,13 +119,22 @@
         button.title = `Download ${kind}`;
         button.setAttribute('aria-label', `Download Instagram ${kind}`);
         button.addEventListener('click', event => {event.preventDefault(); event.stopPropagation(); save(img, button);});
-        shadow.append(button);
+        const status = document.createElement('span');
+        status.className = 'status';
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+        status.hidden = true;
+        button.status = status;
+        shadow.append(button, status);
         buttons.set(img, button);
+        if (kind === 'video' && latestJob?.url === videoUrl(img)) showVideoStatus(button, latestJob);
       }
       button.style.left = `${x - 15}px`;
       button.style.top = `${y - 15}px`;
+      button.status.style.left = `${Math.max(8, x - 245)}px`;
+      button.status.style.top = `${y + 23}px`;
     }
-    for (const [img, button] of buttons) if (!found.has(img)) {button.remove(); buttons.delete(img);}
+    for (const [img, button] of buttons) if (!found.has(img)) {button.status.remove(); button.remove(); buttons.delete(img);}
   }
   function schedule() {
     if (!scheduled) {scheduled = true; requestAnimationFrame(reconcile);}

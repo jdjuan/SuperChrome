@@ -24,11 +24,13 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  if(message.action!=='download')return;
  if(port){reply({error:'A download is already running.'});return;}
  try{const url=new URL(message.url);if(url.protocol!=='https:'||!['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','x.com','www.x.com','twitter.com','www.twitter.com','mobile.twitter.com'].includes(url.hostname))throw Error('Enter a YouTube, Instagram, or X HTTPS video URL.');}catch(e){reply({error:e.message});return;}
- chrome.storage.local.set({job:{message:'Starting download…'}});
+ const jobUrl=message.url;
+ const updateJob=result=>chrome.storage.local.set({job:{...result,url:jobUrl}});
+ updateJob({message:'Starting download…'});
  let finished=false;
  port=chrome.runtime.connectNative('io.jdjuan.local_video');
- port.onMessage.addListener(result=>{if(typeof result.ok==='boolean')finished=true;chrome.storage.local.set({job:result});});
- port.onDisconnect.addListener(()=>{const error=chrome.runtime.lastError;if(error&&!finished)chrome.storage.local.set({job:{message:error.message}});port=null;});
+ port.onMessage.addListener(result=>{if(typeof result.ok==='boolean')finished=true;updateJob(result);});
+ port.onDisconnect.addListener(()=>{const error=chrome.runtime.lastError;if(!finished)updateJob({ok:false,message:error?.message||'Download helper disconnected before completion. Click to retry.'});port=null;});
  port.postMessage({action:'download',url:message.url});reply({ok:true});
 });
 importScripts('hide-background.js');
