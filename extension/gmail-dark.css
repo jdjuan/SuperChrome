@@ -1,12 +1,12 @@
 /* Cheap baseline for new conversation panels while scheduled classification catches up. */
 html[data-sc-gmail-dark] :where(body,main,header,section,[role="main"],[role="dialog"]):not([data-sc-gmail-sampling]):where(:not(.a3s,.a3s *)) {background-color:#202124!important;color:#e8eaed!important}
 /* Every rule is gated: switching off restores the underlying Gmail theme. */
-html[data-sc-gmail-dark] { color-scheme:dark; background:#17191c!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="base"]:not([data-sc-gmail-sampling]) { background-color:#17191c!important; }
+html[data-sc-gmail-dark] { color-scheme:dark; background:#141518!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="base"]:not([data-sc-gmail-sampling]) { background-color:#141518!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-bg="surface"]:not([data-sc-gmail-sampling]) { background-color:#202124!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="raised"]:not([data-sc-gmail-sampling]) { background-color:#292c31!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg="accent"]:not([data-sc-gmail-sampling]) { background-color:#33496b!important; }
-html[data-sc-gmail-dark] [data-sc-gmail-bg]:not([data-sc-gmail-sampling]) { background-image:none!important; border-color:#5f6368!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="raised"]:not([data-sc-gmail-sampling]) { background-color:#2a2d32!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg="accent"]:not([data-sc-gmail-sampling]) { background-color:#2f4a73!important; }
+html[data-sc-gmail-dark] [data-sc-gmail-bg]:not([data-sc-gmail-sampling]) { background-image:none!important; border-color:#3c4043!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-fg="text"]:not([data-sc-gmail-sampling]) { color:#e8eaed!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-fg="muted"]:not([data-sc-gmail-sampling]) { color:#bdc1c6!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-fg="link"]:not([data-sc-gmail-sampling]) { color:#aecbfa!important; }
@@ -19,18 +19,25 @@ html[data-sc-gmail-dark] :is(.T-I-J3,.qj,.G-asx,.aAu,.d-Na-J3,.ajz,.aaA,.dv,.J-Z
 html[data-sc-gmail-dark] :is(.bqX,.T-Jo,.pG[aria-checked="false"] .pH-A7):not(.a3s *) { filter:brightness(0) invert(.85)!important; opacity:1!important; }
 html[data-sc-gmail-dark] .T-KT:not(.T-KT-Je):not(.a3s *)::before { filter:brightness(0) invert(.85)!important; opacity:1!important; }
 /* Preserve unread, selected and hover distinctions even when Gmail uses white. */
-html[data-sc-gmail-dark] .zA.zE { background:#292c31!important; font-weight:700; }
+html[data-sc-gmail-dark] .zA.zE { background:#2a2d32!important; font-weight:700; box-shadow:inset 3px 0 0 #8ab4f8; }
+html[data-sc-gmail-dark] .zA.zE :is(.yW,.yW *,.bog,.bog *) { color:#fff!important; }
+html[data-sc-gmail-dark] .zA.yO :is(.yW,.yW *,.bog,.bog *,.y2) { color:#bdc1c6!important; }
 html[data-sc-gmail-dark] .zA.yO { background:#202124!important; }
-html[data-sc-gmail-dark] .zA:is(:hover,.x7) { background:#33496b!important; }
-html[data-sc-gmail-dark] :is(input,textarea,select) { color:#e8eaed!important; background-color:#292c31!important; border-color:#5f6368!important; caret-color:#e8eaed; }
+html[data-sc-gmail-dark] .zA:is(:hover,.x7) { background:#2f4a73!important; }
+html[data-sc-gmail-dark] :is(input,textarea,select) { color:#e8eaed!important; background-color:#2a2d32!important; border-color:#3c4043!important; caret-color:#e8eaed; }
 html[data-sc-gmail-dark] input::placeholder,html[data-sc-gmail-dark] textarea::placeholder { color:#bdc1c6!important; opacity:1; }
 /* CSS only: no attributes, styles, controls or text are inserted into editors. */
 html[data-sc-gmail-dark] :is([contenteditable="true"],[contenteditable=""],.editable),
 html[data-sc-gmail-dark] :is([contenteditable="true"],[contenteditable=""],.editable) * { color:#e8eaed!important; background-color:#202124!important; caret-color:#e8eaed; }
 html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]),
-html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) *:not(img,picture,video,canvas,svg,svg *) { color:#e8eaed!important; background-color:#202124!important; background-image:none!important; border-color:#5f6368!important; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) *:not(img,picture,video,canvas,svg,svg *) { color:#dadce0!important; background-color:#202124!important; background-image:none!important; border-color:#3c4043!important; }
 html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) a[href],
-html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) a[href] * { color:#aecbfa!important; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) a[href] * { color:#8ab4f8!important; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) { line-height:1.55; }
+/* Quoted replies recede so the new text stands out. */
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) .gmail_quote,
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) .gmail_quote * { color:#9aa0a6!important; }
+html[data-sc-gmail-dark] .a3s:not([data-sc-gmail-original]) .gmail_quote { border-left:2px solid #5f6368!important; padding-left:10px; }
 html[data-sc-gmail-dark] .a3s[data-sc-gmail-original] { color:#202124!important; background-color:#fff!important; color-scheme:light; }
 html:not([data-sc-gmail-dark]) [data-sc-gmail-control] { display:none!important; }
 @media print {

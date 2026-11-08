@@ -48,7 +48,7 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  shell.style.backgroundColor='rgb(200,220,255)';await tick();
  assert.equal(shell.getAttribute('data-sc-gmail-bg'),'accent','Reused message shells update after the scheduled batch');
  shell.removeAttribute('style');shell.className='gmail-test-accent';await tick();
- assert.equal(w.getComputedStyle(shell).backgroundColor,'rgb(51, 73, 107)','Classified colors override startup baseline');
+ assert.equal(w.getComputedStyle(shell).backgroundColor,'rgb(47, 74, 115)','Classified colors override startup baseline');
  shell.remove();await tick();
  const added=w.document.createElement('div');added.className='a3s';added.innerHTML='<p style="color:black;background-color:white">New message</p>';w.document.querySelector('main').append(added);await tick();assert.ok(added.previousSibling.hasAttribute('data-sc-gmail-control'));
  w.document.querySelector('#surface').style.backgroundColor='rgb(200,220,255)';await tick();assert.equal(w.document.querySelector('#surface').getAttribute('data-sc-gmail-bg'),'accent','Runtime Gmail color changes are reclassified');
@@ -82,7 +82,7 @@ function setup({enabled=true,url='https://mail.google.com/mail/u/0/#inbox',html=
  const popup=new JSDOM(read('popup.html'),{runScripts:'outside-only'}),p=popup.window;let saved,fail=false,listener;
  p.chrome={storage:{local:{get:async()=>({gmailDarkMode:false}),set:async data=>{if(fail)throw Error('Unavailable');saved=data;}},onChanged:{addListener:f=>listener=f}}};p.eval(read('gmail-popup.js'));await tick();const toggle=p.document.querySelector('#gmail-dark-mode');assert.equal(toggle.disabled,false);assert.equal(toggle.checked,false);toggle.click();await tick();assert.deepEqual(JSON.parse(JSON.stringify(saved)),{gmailDarkMode:true});fail=true;toggle.click();await tick();assert.equal(toggle.checked,true);assert.match(p.document.querySelector('#gmail-dark-status').textContent,/Could not save/);listener({gmailDarkMode:{newValue:false}},'local');assert.equal(toggle.checked,false);popup.window.close();
  // Palette pairs must pass even on the brightest selected background.
- const colors={text:'#e8eaed',muted:'#bdc1c6',link:'#aecbfa'},surfaces=['#17191c','#202124','#292c31','#33496b'];
+ const colors={text:'#e8eaed',muted:'#bdc1c6',link:'#aecbfa'},surfaces=['#141518','#202124','#2a2d32','#2f4a73'];
  const lum=hex=>hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);
  for(const color of Object.values(colors))for(const surface of surfaces)assert.ok((lum(color)+.05)/(lum(surface)+.05)>=4.5,`${color} on ${surface}`);
  const manifest=JSON.parse(read('manifest.json'));assert.ok(manifest.content_scripts.some(s=>s.matches.includes('https://mail.google.com/*')&&s.js.includes('gmail-dark.js')&&s.css.includes('gmail-dark.css')));
