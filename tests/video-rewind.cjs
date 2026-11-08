@@ -21,3 +21,25 @@ p=setup('https://www.netflix.com/watch/123');p.key();assert.equal(p.v.currentTim
 p=setup();Object.defineProperty(p.v,'currentTime',{get:()=>30,set:()=>{throw Error('unseekable')}});assert.equal(p.key().defaultPrevented,false);assert.equal(p.native(),1);
 const manifest=JSON.parse(fs.readFileSync('extension/manifest.json'));assert.ok(manifest.content_scripts.some(c=>c.js.includes('video-rewind.js')&&c.world==='MAIN'&&c.run_at==='document_start'));
 console.log('PASS: five-second rewind, native interception, modifiers, editing, routes, hidden video, Netflix managed seek/fallback, failures.');
+for(const url of ['https://www.youtube.com/embed/test','https://www.youtube-nocookie.com/embed/test']) {
+ p=setup(url);p.key();assert.equal(p.v.currentTime,25,'embedded YouTube player');
+ p.w.document.dispatchEvent(new p.w.CustomEvent('__superchrome_rewind_state',{detail:false}));p.key();assert.equal(p.v.currentTime,25,'disabled immediately');
+ p.w.document.dispatchEvent(new p.w.CustomEvent('__superchrome_rewind_state',{detail:true}));p.key();assert.equal(p.v.currentTime,20,'enabled immediately');
+}
+(async()=>{
+ const tick=()=>new Promise(r=>setImmediate(r));
+ const dom=new JSDOM(fs.readFileSync('extension/popup.html','utf8'),{runScripts:'outside-only'}),w=dom.window;
+ let change,saved,fail=false;
+ w.chrome={storage:{local:{get:async()=>({videoRewindEnabled:false}),set:async data=>{if(fail)throw Error();saved=data}},onChanged:{addListener:fn=>change=fn}}};
+ w.eval(fs.readFileSync('extension/video-rewind-popup.js','utf8'));await tick();
+ const toggle=w.document.querySelector('#video-rewind-enabled');assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+ toggle.click();await tick();assert.equal(saved.videoRewindEnabled,true);
+ fail=true;toggle.click();await tick();assert.equal(toggle.checked,true);assert.match(w.document.querySelector('#video-rewind-status').textContent,/Could not save/);
+ change({videoRewindEnabled:{newValue:false}},'local');assert.equal(toggle.checked,false);
+ const player=setup();let onChange,resolve;player.w.chrome={storage:{local:{get:()=>new Promise(r=>resolve=r)},onChanged:{addListener:fn=>onChange=fn}}};
+ player.w.eval(fs.readFileSync('extension/video-rewind-settings.js','utf8'));
+ onChange({videoRewindEnabled:{newValue:false}},'local');resolve({videoRewindEnabled:true});await tick();player.key();assert.equal(player.v.currentTime,30,'late read must not overwrite newer disabled state');
+ onChange({videoRewindEnabled:{newValue:true}},'local');player.key();assert.equal(player.v.currentTime,25);
+ assert.equal(manifest.content_scripts.find(c=>c.js.includes('video-rewind.js')).all_frames,true);
+ console.log('PASS: embedded players, popup preference, save rollback, live settings bridge and startup race.');
+})().catch(e=>{console.error(e);process.exit(1)});

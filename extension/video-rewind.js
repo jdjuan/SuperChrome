@@ -1,10 +1,13 @@
 // Run before site shortcuts in the page world, including Netflix's player API.
 (() => {
   'use strict';
+  let enabled = true;
+  document.addEventListener('__superchrome_rewind_state', event => { enabled = event.detail !== false; });
+  document.dispatchEvent(new Event('__superchrome_rewind_ready'));
   const netflix = /(^|\.)netflix\.com$/.test(location.hostname);
   function rewind(event) {
-    if (event.key !== 'ArrowLeft' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
-    if (netflix ? !/^\/watch\//.test(location.pathname) : !/^\/(watch|shorts\/)/.test(location.pathname)) return;
+    if (!enabled || event.key !== 'ArrowLeft' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+    if (netflix ? !/^\/watch\//.test(location.pathname) : !/^\/(watch|shorts\/|embed\/)/.test(location.pathname)) return;
     const path = event.composedPath();
     if (path.some(node => node instanceof Element && (node.matches('input,textarea,select,[role="textbox"],[role="combobox"],[role="menu"],[role="listbox"],[role="dialog"],[aria-modal="true"]') || node.isContentEditable))) return;
     const videos = [...document.querySelectorAll('video')].filter(video => {

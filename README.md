@@ -4,7 +4,7 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 
 ## Tools
 
-- **Five-second rewind:** press ← while watching YouTube or Netflix to rewind five seconds. Enabled automatically; refresh existing video tabs after reloading the extension. Typing fields, menus, dialogs and modified arrow shortcuts keep their normal behavior. No new permissions.
+- **Five-second rewind:** press ← while watching YouTube or Netflix to rewind five seconds. Enabled by default; toggle it in **Video Shortcuts → Five-second rewind**. Supports embedded YouTube players too. Refresh existing video tabs after reloading the extension. Typing fields, menus, dialogs and modified arrow shortcuts keep their normal behavior. No new permissions.
 
 - **YouTube:** Feed → YouTube has one Hide distractions switch. Simple mode hides the Home feed, Shorts shelves/navigation and related-video sidebar. Custom exposes only Feed, Shorts and Sidebar related videos; choices persist when switching modes. On by default. Search, subscriptions, comments, playlists, live chat and deliberately opened videos (including direct Shorts links) remain available. These settings do not add timed breaks or change the separate Brave playback retry.
 
@@ -141,3 +141,7 @@ The on-video arrow stays busy until the helper finishes. An adjacent status show
 ### Carousel downloads (3.8.5)
 
 The Instagram on-video arrow saves only the visible carousel slide, including virtualized slides. The helper checks carousel metadata before selecting an entry. If a mixed carousel cannot be matched safely, it reports an error instead of downloading other slides. Popup URL downloads can still produce multiple entries; every output now receives compatible MP4 conversion. No permissions were added.
+
+### Video shortcut controls (3.8.7)
+
+Added a Video Shortcuts sidebar panel and persistent five-second rewind switch that updates open players. The previous version only injected into top-level YouTube pages; embedded players now receive the shortcut, including youtube-nocookie embeds. Netflix uses its managed seek API when available, with a standard media fallback. Local regression tests cover settings changes and embedded URLs. Live playback verification remains pending.
