@@ -4,6 +4,8 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 
 ## Tools
 
+- **Five-second rewind:** press ← while watching YouTube or Netflix to rewind five seconds. Enabled automatically; refresh existing video tabs after reloading the extension. Typing fields, menus, dialogs and modified arrow shortcuts keep their normal behavior. No new permissions.
+
 - **YouTube:** Feed → YouTube has one Hide distractions switch. Simple mode hides the Home feed, Shorts shelves/navigation and related-video sidebar. Custom exposes only Feed, Shorts and Sidebar related videos; choices persist when switching modes. On by default. Search, subscriptions, comments, playlists, live chat and deliberately opened videos (including direct Shorts links) remain available. These settings do not add timed breaks or change the separate Brave playback retry.
 
 - **Feed:** hide Instagram Home posts, stories and suggestions, X Home and LinkedIn Home feeds. Messages and notifications stay available. Reveal feeds for 1, 3 or 5 minutes, then hide them again. Specific LinkedIn post URLs, including highlighted posts under `/feed/`, remain visible; saved element hides are suspended while viewing a specific post.
