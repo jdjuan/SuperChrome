@@ -2,14 +2,27 @@
  if(globalThis.superChromeLinkedInNotifications||!['linkedin.com','www.linkedin.com'].includes(location.hostname))return;
  globalThis.superChromeLinkedInNotifications=true;
  const attr='data-superchrome-linkedin-suggestion';
- let enabled=true,style,summary,scheduled=false;
+ let enabled=true,games=true,style,summary,scheduled=false;
  function update(){
   scheduled=false;if(!document.documentElement)return;
-  const active=enabled&&/^\/notifications\/?$/.test(location.pathname);
+  const onPage=/^\/notifications\/?$/.test(location.pathname),active=onPage&&(enabled||games);
   document.documentElement.toggleAttribute('data-superchrome-linkedin-notifications',active);
   // Reclassify recycled rows and restore everything on route/preference changes.
   const previous=new Set(document.querySelectorAll(`[${attr}]`)),hidden=new Set();
-  if(active){
+  if(active&&games){
+   // Game invites ("X completed Zip. Your turn") link only to linkedin.com/games/.
+   for(const list of document.querySelectorAll('[data-testid="lazy-column"]')){
+    if(list.closest('header,nav,[role="dialog"],.msg-overlay-container'))continue;
+    for(const row of list.children){
+     if(row.dataset.superchrome)continue;
+     const links=[...row.querySelectorAll('a[href]')].map(a=>{try{return new URL(a.href);}catch{return null;}});
+     if(!links.length||links.some(u=>!u||!['www.linkedin.com','linkedin.com'].includes(u.hostname)))continue;
+     const game=links.filter(u=>/^\/games\/[^/]+/.test(u.pathname));
+     if(game.length&&game.length===links.filter(u=>!/^\/(in|company)\//.test(u.pathname)).length)hidden.add(row);
+    }
+   }
+  }
+  if(active&&enabled){
    for(const link of document.querySelectorAll('a[href*="highlightedUpdateType="]')){
     if(link.closest('header,nav,[role="dialog"],.msg-overlay-container'))continue;
     let url;try{url=new URL(link.href);}catch{continue;}
@@ -36,7 +49,7 @@
    const shadow=summary.attachShadow({mode:'open'});
    shadow.innerHTML='<style>:host{display:block;margin:12px 0}.note{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#f2f5fa;color:#18243a;border:1px solid #ccd5e3;border-radius:12px;font:13px/1.5 system-ui}button{background:#254fd1;color:#fff;border:0;border-radius:7px;padding:7px 12px;font:600 12px system-ui;cursor:pointer}button:focus-visible{outline:2px solid #254fd1;outline-offset:3px}@media(prefers-color-scheme:dark){.note{background:#1c2940;color:#eef3ff;border-color:#495c7a}button{background:#aec3ff;color:#142346}}.note{background:var(--sc-surface,#fff);color:var(--sc-text,#182238);border-color:var(--sc-border,#bdc8da)}</style><div class="note"><span role="status"></span><button>Show</button></div>';
    globalThis.SuperChromeTheme?.attach(summary,shadow);
-   shadow.querySelector('button').onclick=async()=>{try{await chrome.storage.local.set({linkedinNotifications:false});}catch{shadow.querySelector('button').textContent='Try again';}};
+   shadow.querySelector('button').onclick=async()=>{try{await chrome.storage.local.set({linkedinNotifications:false,linkedinGameNotifications:false});}catch{shadow.querySelector('button').textContent='Try again';}};
   }
   const text=`${hidden.size} suggested notification${hidden.size===1?'':'s'} hidden`;
   const status=summary.shadowRoot.querySelector('[role=status]');if(status.textContent!==text)status.textContent=text;
@@ -44,8 +57,8 @@
   globalThis.SuperChromeTheme?.apply(summary);
  }
  function schedule(){if(!scheduled){scheduled=true;queueMicrotask(update);}}
- chrome.storage.local.get({linkedinNotifications:true}).then(s=>{enabled=s.linkedinNotifications!==false;update();}).catch(()=>{});
- chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.linkedinNotifications){enabled=changes.linkedinNotifications.newValue!==false;update();}});
+ chrome.storage.local.get({linkedinNotifications:true,linkedinGameNotifications:true}).then(s=>{enabled=s.linkedinNotifications!==false;games=s.linkedinGameNotifications!==false;update();}).catch(()=>{});
+ chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.linkedinNotifications)enabled=changes.linkedinNotifications.newValue!==false;if(changes.linkedinGameNotifications)games=changes.linkedinGameNotifications.newValue!==false;if(changes.linkedinNotifications||changes.linkedinGameNotifications)update();});
  new MutationObserver(schedule).observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});
  window.addEventListener('popstate',update);setInterval(update,500);
 })();
