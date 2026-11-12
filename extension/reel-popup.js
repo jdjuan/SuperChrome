@@ -29,6 +29,14 @@ find('watch').addEventListener('click', async () => {
 find('inspect').addEventListener('click', async () => {
   try {
     const {tab,id} = await currentVideo();
+    if (/(^|\.)instagram\.com$/.test(new URL(tab.url).hostname)) {
+      status.textContent = 'Reading Instagram stats…';
+      await chrome.scripting.executeScript({target:{tabId:tab.id},files:['theme.js','instagram-stats.js']});
+      const [ig] = await chrome.scripting.executeScript({target:{tabId:tab.id},args:[id],func:async shortcode => { const api=globalThis.SuperChromeInstagramStats; try { return {text:api.text(await api.fetchStats(shortcode))}; } catch (error) { return {error:error.message}; } }});
+      if (ig.result?.error) throw new Error(ig.result.error);
+      status.textContent = `Post: ${id}\n\n${ig.result.text}\n\nDates use your computer’s timezone. These are public counts, not private creator analytics.`;
+      return;
+    }
     const [result] = await chrome.scripting.executeScript({target:{tabId:tab.id},files:['theme.js', /(^|\.)facebook\.com$/.test(new URL(tab.url).hostname) ? 'inspect.js' : 'video-stats.js']});
     const details = result.result;
     if (!details || details.id !== id) throw new Error('The video changed. Open the extension again to retry.');

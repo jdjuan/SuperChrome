@@ -1,10 +1,10 @@
 {
   "name": "superchrome",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "private": true,
   "description": "Personal Chrome toolkit",
   "scripts": {
-    "test": "node tests/video-rewind.cjs && node tests/verify.cjs && node tests/guard-popup.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs && node tests/youtube-focus.cjs && node tests/linkedin.cjs && node tests/theme.cjs && node tests/popup-navigation.cjs && node tests/helper-setup.cjs && node tests/updates.cjs && node tests/linkedin-notifications.cjs && node tests/instagram-images.cjs && node tests/gmail.cjs && node tests/linkedin-dark.cjs && node tests/linkedin-shadow.cjs && node tests/linkedin-startup.cjs && node tests/video-stats.cjs && python3 tests/carousel-helper.py",
+    "test": "node tests/video-rewind.cjs && node tests/verify.cjs && node tests/guard-popup.cjs && node tests/hide.cjs && node tests/instagram.cjs && node tests/instagram-legacy.cjs && node tests/instagram-timer.cjs && node tests/x.cjs && node tests/youtube.cjs && node tests/youtube-focus.cjs && node tests/linkedin.cjs && node tests/theme.cjs && node tests/popup-navigation.cjs && node tests/helper-setup.cjs && node tests/updates.cjs && node tests/linkedin-notifications.cjs && node tests/instagram-images.cjs && node tests/gmail.cjs && node tests/linkedin-dark.cjs && node tests/linkedin-shadow.cjs && node tests/linkedin-startup.cjs && node tests/video-stats.cjs && node tests/instagram-stats.cjs && python3 tests/carousel-helper.py",
     "package": "node scripts/package-release.cjs"
   },
   "devDependencies": {
