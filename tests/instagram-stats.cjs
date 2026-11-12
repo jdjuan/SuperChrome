@@ -37,5 +37,21 @@ const read=f=>fs.readFileSync('extension/'+f,'utf8'),tick=()=>new Promise(r=>set
  // Signed-out errors are explained.
  t=load('https://www.instagram.com/p/abc/',{response:{ok:false,status:401,json:async()=>({})}});await tick();await tick();await tick();
  assert.match(t.host().shadowRoot.querySelector('.when').textContent,/Sign in/);
- console.log('PASS: Instagram stats badge decoding, fetch, theme, dismiss, toggle and errors.');
+ // Profile grid tiles get chips; feed articles, tiny links and non-grid pages do not.
+ {
+  const dom=new JSDOM('<html><body><main><a id="t1" href="/jdjuan0/reel/DfYBSnvsqJb/"><img></a><a id="t2" href="/p/abc/"><div style="background-image:url(x)"></div></a><a id="small" href="/p/zzz/"><img></a><article><a id="feed" href="/p/feed/"><img></a></article></main></body></html>',{url:'https://www.instagram.com/jdjuan0/reels/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+  w.matchMedia=()=>({matches:false});w.chrome={storage:{local:{get:async d=>d},onChanged:{addListener(){}}}};
+  w.HTMLElement.prototype.getBoundingClientRect=function(){const big=this.id!=='small';return {width:big?300:40,height:big?400:40,top:0,left:0,right:0,bottom:0};};
+  const paths=[];w.fetch=async p=>{paths.push(p);return {ok:true,status:200,json:async()=>({items:[{taken_at:1793914984,play_count:5000,like_count:24,comment_count:4,media_type:2}]})};};
+  w.eval(read('theme.js'));w.eval(read('instagram-stats.js'));
+  await new Promise(r=>setTimeout(r,900));
+  const chipOf=id=>w.document.querySelector('#'+id+' > [data-superchrome="instagram-grid-stats"]');
+  assert.ok(chipOf('t1'),'reel tile chip');assert.ok(chipOf('t2'),'background-image tile chip');
+  assert.ok(!chipOf('small')&&!chipOf('feed'),'no chips on small links or feed posts');
+  assert.ok(paths.every(p=>!/zzz|feed/.test(p)));
+  const chip=chipOf('t1').shadowRoot;assert.match(chip.querySelector('.counts').textContent,/5K.*24.*4/);assert.match(chip.querySelector('.date').textContent,/Nov|11/);
+  assert.match(chip.querySelector('style').textContent,/rgb\(0 0 0 \/ \.74\)/);
+  assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,2);
+ }
+ console.log('PASS: Instagram stats badge, profile grid chips, decoding, fetch, theme, dismiss, toggle and errors.');process.exit(0);
 })().catch(e=>{console.error(e);process.exit(1);});

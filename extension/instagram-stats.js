@@ -134,5 +134,83 @@
   chrome.storage?.local?.get({instagramStats: true}).then(settings => { enabled = settings.instagramStats !== false; current = null; update(); }).catch(() => update());
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local' && changes.instagramStats) { enabled = changes.instagramStats.newValue !== false; current = null; dismissed = null; update(); }
+    if (area === 'local' && changes.instagramGridStats) { gridEnabled = changes.instagramGridStats.newValue !== false; gridEnabled ? scanGrid() : clearGrid(); }
   });
+
+  // Grid chips: upload time and counts on every visible tile of profile, Reels-tab, tagged and saved grids.
+  // Chips sit on top of photos, so they own a dark scrim (worst case over white still exceeds 4.5:1).
+  let gridEnabled = true, rateLimitedUntil = 0, active = 0, scanQueued = false;
+  const tiles = new WeakSet(), queue = [], chips = new Set();
+  const GRID_CSS = `:host { all: initial; position: absolute; top: 6px; left: 6px; z-index: 2; pointer-events: none; max-width: calc(100% - 44px); }
+    .chip { box-sizing: border-box; display: grid; gap: 2px; padding: 5px 8px; border-radius: 8px; background: rgb(0 0 0 / .74); color: #fff; font: 600 11.5px/1.3 system-ui, -apple-system, sans-serif; text-shadow: none; }
+    .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .counts { display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 1px; font-weight: 600; }
+    .counts span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+    svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .plays svg { fill: currentColor; stroke: none; }
+    .muted { color: #e2e6ee; font-weight: 500; }`;
+  const onGridPage = () => !/^\/(?:p|reel|reels|tv|stories|direct|explore|accounts)(?:\/|$)/.test(location.pathname) && location.pathname !== '/';
+  function isTile(anchor) {
+    if (!shortcodeOf(anchor.href) || anchor.closest('article, [role="dialog"], header, nav')) return false;
+    const rect = anchor.getBoundingClientRect();
+    return rect.width >= 90 && rect.height >= 90 && Boolean(anchor.querySelector('img, video, div[style*="background-image"]'));
+  }
+  const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+    for (const entry of entries) if (entry.isIntersecting) { observer.unobserve(entry.target); enqueue(entry.target); }
+  }, {rootMargin: '200px'}) : null;
+  function scanGrid() {
+    if (!gridEnabled || !onGridPage()) return;
+    for (const anchor of document.querySelectorAll('main a[href*="/p/"], main a[href*="/reel/"]')) {
+      if (tiles.has(anchor) || !isTile(anchor)) continue;
+      tiles.add(anchor);
+      observer ? observer.observe(anchor) : enqueue(anchor);
+    }
+  }
+  function enqueue(anchor) { queue.push(anchor); pump(); }
+  // Two requests at a time, spaced out, so long grids don't trip Instagram's rate limits.
+  function pump() {
+    while (active < 2 && queue.length && Date.now() >= rateLimitedUntil) {
+      const anchor = queue.shift();
+      if (!anchor.isConnected || !gridEnabled) continue;
+      const shortcode = shortcodeOf(anchor.href);
+      active++;
+      fetchStats(shortcode).then(stats => chip(anchor, stats), error => {
+        if (/\(429\)/.test(error.message)) { rateLimitedUntil = Date.now() + 60000; queue.unshift(anchor); }
+      }).finally(() => { active--; setTimeout(pump, 250); });
+    }
+    if (queue.length && Date.now() < rateLimitedUntil) setTimeout(pump, rateLimitedUntil - Date.now());
+  }
+  function chip(anchor, stats) {
+    if (!gridEnabled || !anchor.isConnected || shortcodeOf(anchor.href) !== stats.shortcode) return;
+    anchor.querySelector(':scope > [data-superchrome="instagram-grid-stats"]')?.remove();
+    const holder = document.createElement('div');
+    holder.dataset.superchrome = 'instagram-grid-stats';
+    const root = holder.attachShadow({mode: 'open'});
+    const now = new Date(), sameYear = stats.takenAt?.getFullYear() === now.getFullYear();
+    const date = stats.takenAt ? stats.takenAt.toLocaleString(undefined, {month: 'short', day: 'numeric', ...(sameYear ? {} : {year: 'numeric'}), hour: 'numeric', minute: '2-digit'}) : 'Date not shown';
+    root.innerHTML = `<style>${GRID_CSS}</style><div class="chip"><span class="date"></span><span class="counts"></span></div>`;
+    const dateEl = root.querySelector('.date');
+    dateEl.textContent = date;
+    if (stats.takenAt) { const small = document.createElement('span'); small.className = 'muted'; small.textContent = ` · ${ago(stats.takenAt)}`; dateEl.append(small); }
+    const counts = root.querySelector('.counts');
+    for (const [name, value] of [['plays', stats.video ? stats.plays : null], ['likes', stats.likes], ['comments', stats.comments]]) {
+      if (value === null) continue;
+      const span = document.createElement('span'); span.className = name; span.innerHTML = ICONS[name]; span.append(compact(value)); counts.append(span);
+    }
+    holder.title = text(stats);
+    if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+    anchor.append(holder);
+    chips.add(holder);
+  }
+  function clearGrid() {
+    for (const holder of chips) holder.remove();
+    chips.clear(); queue.length = 0;
+    for (const anchor of document.querySelectorAll('main a[href]')) tiles.delete(anchor);
+  }
+  new MutationObserver(() => {
+    if (scanQueued) return;
+    scanQueued = true;
+    setTimeout(() => { scanQueued = false; scanGrid(); }, 300);
+  }).observe(document.documentElement, {childList: true, subtree: true});
+  chrome.storage?.local?.get({instagramGridStats: true}).then(settings => { gridEnabled = settings.instagramGridStats !== false; scanGrid(); }).catch(() => scanGrid());
 })();
