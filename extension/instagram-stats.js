@@ -40,34 +40,77 @@
     const value = key => number(media?.[key]?.value?.results?.[0]?.total_value);
     return media ? {saves: value('umapi_saves_count'), views: value('umapi_unified_total_content_views_count'), sends: value('umapi_reshares_count')} : null;
   }
-  async function fetchStats(shortcode) {
+  // Public numbers for one media item.
+  function parseItem(item, shortcode = item.code) {
+    const video = item.media_type === 2 || Boolean(item.video_versions);
+    const owner = String(item.user?.pk ?? item.owner?.pk ?? '');
+    return {
+      shortcode, pk: String(item.pk || item.id || '').split('_')[0] || mediaId(shortcode), video,
+      own: Boolean(owner) && owner === ownUserId(),
+      takenAt: number(item.taken_at) ? new Date(item.taken_at * 1000) : null,
+      views: video ? number(item.play_count ?? item.ig_play_count ?? item.view_count ?? item.video_view_count) : null,
+      likes: number(item.like_count),
+      comments: number(item.comment_count),
+      sends: number(item.reshare_count),
+      saves: null,
+      insightsDone: false
+    };
+  }
+  // Results survive reloads for 10 minutes, so revisiting a profile shows chips instantly.
+  const STORE_KEY = 'superchrome:instagram-stats:v1', TTL = 10 * 60 * 1000;
+  const stored = (() => { try { return JSON.parse(sessionStorage.getItem(STORE_KEY)) || {}; } catch { return {}; } })();
+  for (const [code, entry] of Object.entries(stored)) {
+    if (!entry || Date.now() - entry.at > TTL) { delete stored[code]; continue; }
+    cache.set(code, Promise.resolve({...entry.stats, takenAt: entry.stats.takenAt ? new Date(entry.stats.takenAt) : null}));
+  }
+  let persistQueued = false;
+  function remember(stats) {
+    stored[stats.shortcode] = {at: Date.now(), stats: {...stats, takenAt: stats.takenAt?.getTime() ?? null}};
+    if (persistQueued) return;
+    persistQueued = true;
+    setTimeout(() => { persistQueued = false; try { sessionStorage.setItem(STORE_KEY, JSON.stringify(stored)); } catch {} }, 500);
+  }
+  const headers = {'X-IG-App-ID': APP_ID, 'X-Requested-With': 'XMLHttpRequest'};
+  async function getJson(url) {
+    const response = await fetch(url, {credentials: 'include', headers});
+    if (response.status === 401 || response.status === 403) throw Error('Sign in to Instagram to see stats.');
+    if (!response.ok) throw Error(`Instagram did not return stats (${response.status}).`);
+    return response.json();
+  }
+  // Public numbers: memory/session cache, else one single-post request.
+  function fetchPublic(shortcode) {
     if (cache.has(shortcode)) return cache.get(shortcode);
     const id = mediaId(shortcode);
-    if (!id) throw Error('Unrecognized Instagram link.');
-    const request = fetch(`/api/v1/media/${id}/info/`, {credentials: 'include', headers: {'X-IG-App-ID': APP_ID, 'X-Requested-With': 'XMLHttpRequest'}}).then(async response => {
-      if (response.status === 401 || response.status === 403) throw Error('Sign in to Instagram to see stats.');
-      if (!response.ok) throw Error(`Instagram did not return stats (${response.status}).`);
-      const item = (await response.json())?.items?.[0];
+    if (!id) return Promise.reject(Error('Unrecognized Instagram link.'));
+    const request = getJson(`/api/v1/media/${id}/info/`).then(json => {
+      const item = json?.items?.[0];
       if (!item) throw Error('Instagram did not return stats for this post.');
-      const video = item.media_type === 2 || Boolean(item.video_versions);
-      const owner = String(item.user?.pk ?? item.owner?.pk ?? '');
-      const own = Boolean(owner) && owner === ownUserId();
-      const insights = own ? await fetchInsights(String(item.pk || id)).catch(() => null) : null;
-      return {
-        shortcode, own, video,
-        takenAt: number(item.taken_at) ? new Date(item.taken_at * 1000) : null,
-        views: (video ? number(item.play_count ?? item.ig_play_count ?? item.view_count ?? item.video_view_count) : null) ?? insights?.views ?? null,
-        likes: number(item.like_count),
-        comments: number(item.comment_count),
-        sends: number(item.reshare_count) ?? insights?.sends ?? null,
-        saves: insights?.saves ?? null,
-        duration: number(item.video_duration)
-      };
+      const stats = parseItem(item, shortcode);
+      remember(stats);
+      return stats;
     });
     cache.set(shortcode, request);
-    request.catch(() => cache.delete(shortcode));
+    request.catch(() => { if (cache.get(shortcode) === request) cache.delete(shortcode); });
     return request;
   }
+  // Saves (plus views on photos and missing sends) for the viewer's own posts. One request per post, shared.
+  const insightsRequests = new Map();
+  const insightsFor = (shortcode, pk = mediaId(shortcode)) => {
+    if (!insightsRequests.has(shortcode)) insightsRequests.set(shortcode, fetchInsights(pk).catch(() => null));
+    return insightsRequests.get(shortcode);
+  };
+  function withInsights(stats) {
+    if (!stats.own || stats.insightsDone) return Promise.resolve(stats);
+    return insightsFor(stats.shortcode, stats.pk).then(insights => {
+      stats.saves = insights?.saves ?? null;
+      stats.views ??= insights?.views ?? null;
+      stats.sends ??= insights?.sends ?? null;
+      stats.insightsDone = true;
+      remember(stats);
+      return stats;
+    });
+  }
+  const fetchStats = shortcode => fetchPublic(shortcode).then(withInsights);
   const compact = value => value === null ? '—' : new Intl.NumberFormat(undefined, {notation: 'compact', maximumFractionDigits: 1}).format(value);
   const exact = value => value === null ? 'Not shown' : new Intl.NumberFormat().format(value);
   // Date only, day first ("15 Oct"); the year appears for older posts.
@@ -189,16 +232,22 @@
     }
   }
   function enqueue(anchor) { queue.push(anchor); pump(); }
-  // Two requests at a time, spaced out, so long grids don't trip Instagram's rate limits.
+  // On your own profile the saves request starts alongside the post request instead of after it.
+  const onOwnProfile = () => Boolean(document.querySelector('main a[href="/accounts/edit/"], header a[href="/accounts/edit/"]'));
+  // Up to six tiles at once; chips show public numbers first and fill in saves when Insights answers.
   function pump() {
-    while (active < 2 && queue.length && Date.now() >= rateLimitedUntil) {
+    while (active < 6 && queue.length && Date.now() >= rateLimitedUntil) {
       const anchor = queue.shift();
       if (!anchor.isConnected || !gridEnabled) continue;
       const shortcode = shortcodeOf(anchor.href);
+      if (onOwnProfile() && !cache.has(shortcode)) insightsFor(shortcode);
       active++;
-      fetchStats(shortcode).then(stats => chip(anchor, stats), error => {
+      fetchPublic(shortcode).then(stats => {
+        chip(anchor, stats);
+        if (stats.own && !stats.insightsDone) withInsights(stats).then(full => chip(anchor, full));
+      }, error => {
         if (/\(429\)/.test(error.message)) { rateLimitedUntil = Date.now() + 60000; queue.unshift(anchor); }
-      }).finally(() => { active--; setTimeout(pump, 250); });
+      }).finally(() => { active--; pump(); });
     }
     if (queue.length && Date.now() < rateLimitedUntil) setTimeout(pump, rateLimitedUntil - Date.now());
   }

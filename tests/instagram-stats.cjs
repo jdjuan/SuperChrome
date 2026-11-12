@@ -64,5 +64,33 @@ const read=f=>fs.readFileSync('extension/'+f,'utf8'),tick=()=>new Promise(r=>set
   assert.match(chip.querySelector('style').textContent,/rgb\(0 0 0 \/ \.76\)/);
   assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,2);
  }
- console.log('PASS: Instagram stats badge, profile grid chips, decoding, fetch, theme, dismiss, toggle and errors.');process.exit(0);
+ // Own profile: saves start in parallel with post info; six tiles load at once; results persist across reloads.
+ {
+  const codes=['A1','B2','C3','D4','E5','F6','G7','H8'];
+  const html='<html><body><main><header><a href="/accounts/edit/">Edit profile</a></header>'+codes.map(c=>`<a href="/jdjuan0/p/${c}/"><img></a>`).join('')+'</main></body></html>';
+  const make=storage=>{const dom=new JSDOM(html,{url:'https://www.instagram.com/jdjuan0/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+   if(storage)w.sessionStorage.setItem('superchrome:instagram-stats:v1',storage);
+   w.document.cookie='ds_user_id=99';
+   const tok=w.document.createElement('script');tok.type='application/json';tok.textContent='{"a":["DTSGInitialData",[],{"token":"DT"}],"b":["LSD",[],{"token":"LS"}]}';w.document.body.prepend(tok);
+   w.matchMedia=()=>({matches:false});w.chrome={storage:{local:{get:async d=>d},onChanged:{addListener(){}}}};
+   w.HTMLElement.prototype.getBoundingClientRect=function(){return this.tagName==='A'&&this.closest('header')?{width:80,height:20}:{width:300,height:400,top:0,left:0,right:0,bottom:0};};
+   const log=[];let open=0,maxOpen=0,release=[];
+   w.fetch=async p=>{log.push(p);
+    if(p==='/api/graphql')return {ok:true,json:async()=>({data:{media:{umapi_saves_count:{value:{results:[{total_value:9}]}}}}})};
+    open++;maxOpen=Math.max(maxOpen,open);await new Promise(r=>release.push(r));open--;
+    return {ok:true,status:200,json:async()=>({items:[{pk:'1',user:{pk:99},taken_at:1793914984,like_count:3,comment_count:1,reshare_count:2,play_count:100,media_type:2}]})};};
+   w.eval(read('theme.js'));w.eval(read('instagram-stats.js'));return {w,log,state:()=>({maxOpen,release})};};
+  let {w,log,state}=make();await new Promise(r=>setTimeout(r,500));
+  assert.equal(state().maxOpen,6,'six post requests in flight at once');
+  assert.ok(log.filter(p=>p==='/api/graphql').length>=6,'saves requested before post info returns on your own profile');
+  for(let i=0;i<4;i++){state().release.splice(0).forEach(r=>r());await new Promise(r=>setTimeout(r,50));}
+  await new Promise(r=>setTimeout(r,700));
+  const chips=[...w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]')];
+  assert.equal(chips.length,8);assert.ok(chips.every(c=>/Saves9/.test(c.shadowRoot.textContent)));
+  assert.equal(log.filter(p=>p==='/api/graphql').length,8,'one saves request per post');
+  const saved=w.sessionStorage.getItem('superchrome:instagram-stats:v1');assert.ok(saved&&saved.includes('H8'));
+  ({w,log}=make(saved));await new Promise(r=>setTimeout(r,600));
+  assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,8);assert.equal(log.length,0,'cached results need no requests');
+ }
+ console.log('PASS: Instagram stats badge, profile grid chips, parallel saves, concurrency, session cache, decoding, fetch, theme, dismiss, toggle and errors.');process.exit(0);
 })().catch(e=>{console.error(e);process.exit(1);});
