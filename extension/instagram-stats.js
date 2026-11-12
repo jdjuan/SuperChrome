@@ -1,4 +1,4 @@
-// Shows upload time and public counts (plays, likes, comments, shares) for the open Instagram post or reel.
+// Shows the upload date and views, likes, comments, sends and saves for Instagram posts, reels and profile grids.
 (() => {
   if (!/(^|\.)instagram\.com$/.test(location.hostname)) return;
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -12,6 +12,34 @@
     return String(id);
   }
   const number = value => Number.isFinite(value) && value >= 0 ? value : null;
+  const METRICS = [['views', 'Views'], ['likes', 'Likes'], ['comments', 'Comments'], ['sends', 'Sends'], ['saves', 'Saves']];
+  const ownUserId = () => document.cookie.match(/(?:^|;\s*)ds_user_id=(\d+)/)?.[1] || null;
+  // Saves (and photo views) only exist in Insights, which Instagram shows to a post's owner.
+  // That GraphQL query needs the page's request tokens; if anything changes, saves are simply omitted.
+  const INSIGHTS_DOC = '28788577777468595';
+  let tokens = null;
+  function pageTokens() {
+    if (tokens) return tokens;
+    let dtsg, lsd;
+    for (const script of document.scripts) {
+      const source = script.textContent;
+      if (!source || source.length < 20) continue;
+      dtsg ||= source.match(/"DTSGInitialData",\[\],\{"token":"([^"]+)"/)?.[1];
+      lsd ||= source.match(/"LSD",\[\],\{"token":"([^"]+)"/)?.[1];
+      if (dtsg && lsd) return tokens = {dtsg, lsd};
+    }
+    return null;
+  }
+  async function fetchInsights(id) {
+    const auth = pageTokens();
+    if (!auth) return null;
+    const body = new URLSearchParams({doc_id: INSIGHTS_DOC, fb_api_req_friendly_name: 'PolarisMediaInsightsBaseSurfaceQuery', variables: JSON.stringify({boosted_id: null, is_creator_viewing_insights: true, is_fvob_eligible: false, query_params: {access_token: '', id}}), lsd: auth.lsd, fb_dtsg: auth.dtsg});
+    const response = await fetch('/api/graphql', {method: 'POST', credentials: 'include', headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-IG-App-ID': APP_ID, 'X-FB-LSD': auth.lsd}, body});
+    if (!response.ok) return null;
+    const media = (await response.json())?.data?.media;
+    const value = key => number(media?.[key]?.value?.results?.[0]?.total_value);
+    return media ? {saves: value('umapi_saves_count'), views: value('umapi_unified_total_content_views_count'), sends: value('umapi_reshares_count')} : null;
+  }
   async function fetchStats(shortcode) {
     if (cache.has(shortcode)) return cache.get(shortcode);
     const id = mediaId(shortcode);
@@ -21,15 +49,19 @@
       if (!response.ok) throw Error(`Instagram did not return stats (${response.status}).`);
       const item = (await response.json())?.items?.[0];
       if (!item) throw Error('Instagram did not return stats for this post.');
+      const video = item.media_type === 2 || Boolean(item.video_versions);
+      const owner = String(item.user?.pk ?? item.owner?.pk ?? '');
+      const own = Boolean(owner) && owner === ownUserId();
+      const insights = own ? await fetchInsights(String(item.pk || id)).catch(() => null) : null;
       return {
-        shortcode,
+        shortcode, own, video,
         takenAt: number(item.taken_at) ? new Date(item.taken_at * 1000) : null,
-        plays: number(item.play_count ?? item.ig_play_count ?? item.view_count ?? item.video_view_count),
+        views: (video ? number(item.play_count ?? item.ig_play_count ?? item.view_count ?? item.video_view_count) : null) ?? insights?.views ?? null,
         likes: number(item.like_count),
         comments: number(item.comment_count),
-        shares: number(item.reshare_count),
-        duration: number(item.video_duration),
-        video: item.media_type === 2 || Boolean(item.video_versions)
+        sends: number(item.reshare_count) ?? insights?.sends ?? null,
+        saves: insights?.saves ?? null,
+        duration: number(item.video_duration)
       };
     });
     cache.set(shortcode, request);
@@ -38,21 +70,16 @@
   }
   const compact = value => value === null ? '—' : new Intl.NumberFormat(undefined, {notation: 'compact', maximumFractionDigits: 1}).format(value);
   const exact = value => value === null ? 'Not shown' : new Intl.NumberFormat().format(value);
-  function ago(date, now = Date.now()) {
-    const seconds = Math.round((date.getTime() - now) / 1000);
-    const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
-    const rtf = new Intl.RelativeTimeFormat(undefined, {numeric: 'auto'});
-    for (const [unit, size] of units) if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
-    return rtf.format(seconds, 'second');
-  }
+  // Date only, day first ("15 Oct"); the year appears for older posts.
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const formatDate = (date, withYear = false) => date ? `${date.getDate()} ${MONTHS[date.getMonth()]}${withYear || date.getFullYear() !== new Date().getFullYear() ? ' ' + date.getFullYear() : ''}` : 'Date not shown';
   function text(stats) {
-    const lines = [`Posted: ${stats.takenAt ? `${stats.takenAt.toLocaleString()} (${ago(stats.takenAt)})` : 'Not shown'}`];
-    if (stats.video) lines.push(`Plays: ${exact(stats.plays)}`);
-    lines.push(`Likes: ${exact(stats.likes)}`, `Comments: ${exact(stats.comments)}`, `Shares: ${exact(stats.shares)}`);
-    if (stats.duration) lines.push(`Length: ${Math.round(stats.duration)} s`);
+    const lines = [`Date: ${formatDate(stats.takenAt, true)}`];
+    for (const [key, label] of METRICS) if (stats[key] !== null) lines.push(`${label}: ${exact(stats[key])}`);
+    if (stats.saves === null) lines.push('Saves: only shown on your own posts');
     return lines.join('\n');
   }
-  globalThis.SuperChromeInstagramStats = {shortcodeOf, mediaId, fetchStats, text, compact, ago};
+  globalThis.SuperChromeInstagramStats = {shortcodeOf, mediaId, fetchStats, text, compact, formatDate};
   if (globalThis.__superchromeInstagramStatsBadge) return;
   globalThis.__superchromeInstagramStatsBadge = true;
 
@@ -64,15 +91,14 @@
     .bar { box-sizing: border-box; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); flex-wrap: wrap; row-gap: 4px; padding: 7px 8px 7px 12px; border: 1px solid var(--sc-border, #bdc8da); border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / .18); font: 600 12.5px/1.35 system-ui, -apple-system, sans-serif; }
     [hidden] { display: none !important; }
     .when { white-space: nowrap; }
-    .when small { font-weight: 500; color: var(--sc-muted, #526078); font-size: 12px; margin-left: 4px; }
-    .counts { display: flex; gap: 10px; white-space: nowrap; color: var(--sc-text, #182238); }
+    .counts { display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 2px; white-space: nowrap; color: var(--sc-text, #182238); }
     .counts > span { display: inline-flex; align-items: center; gap: 4px; }
-    svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    .plays svg { fill: currentColor; stroke: none; }
+    .counts small { font-weight: 500; font-size: 12px; color: var(--sc-muted, #526078); }
+    svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
     .sep { width: 1px; align-self: stretch; background: var(--sc-border, #bdc8da); }
     button { all: initial; box-sizing: border-box; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; font: 15px/1 system-ui; }
     .msg { font-weight: 500; color: var(--sc-muted, #526078); }
-  </style><div class="bar" role="status" aria-live="polite" hidden><span class="when"></span><span class="sep"></span><span class="counts"><span class="plays" title="Plays"></span><span class="likes" title="Likes"></span><span class="comments" title="Comments"></span><span class="shares" title="Shares"></span></span><button class="close" type="button" aria-label="Hide stats for this post" title="Hide for this post">×</button></div>`;
+  </style><div class="bar" role="status" aria-live="polite" hidden><span class="when"></span><span class="sep"></span><span class="counts"><span class="views"></span><span class="likes"></span><span class="comments"></span><span class="sends"></span><span class="saves"></span></span><button class="close" type="button" aria-label="Hide stats for this post" title="Hide for this post">×</button></div>`;
   globalThis.SuperChromeTheme?.attach(host, shadow);
   const $ = selector => shadow.querySelector(selector);
   const bar = $('.bar');
@@ -80,30 +106,28 @@
   function mount() { const parent = document.body || document.documentElement; if (parent && host.parentNode !== parent) parent.append(host); }
   function hide() { bar.hidden = true; }
   const ICONS = {
-    plays: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>',
+    views: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
     likes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>',
     comments: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg>',
-    shares: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg>'
+    sends: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg>',
+    saves: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>'
   };
-  function setCount(name, icon, value, label) {
-    const el = $('.' + name);
+  // One metric: icon, compact number, then its word, so each value is unambiguous.
+  function metric(el, key, label, value) {
     el.hidden = value === null;
-    el.innerHTML = ICONS[icon];
-    el.append(compact(value));
+    el.innerHTML = ICONS[key];
+    const strong = document.createElement('b'); strong.textContent = compact(value);
+    const small = document.createElement('small'); small.textContent = label.toLowerCase();
+    el.append(strong, small);
     el.title = `${label}: ${exact(value)}`;
-    el.setAttribute('aria-label', `${label}: ${exact(value)}`);
   }
   function render(stats) {
     const when = $('.when');
-    when.textContent = stats.takenAt ? stats.takenAt.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : 'Date not shown';
-    when.title = stats.takenAt ? stats.takenAt.toString() : '';
-    if (stats.takenAt) { const small = document.createElement('small'); small.textContent = ago(stats.takenAt); when.append(small); }
+    when.textContent = formatDate(stats.takenAt);
+    when.title = stats.takenAt ? stats.takenAt.toLocaleDateString(undefined, {dateStyle: 'full'}) : '';
     $('.sep').hidden = false;
     $('.counts').hidden = false;
-    setCount('plays', 'plays', stats.video ? stats.plays : null, 'Plays');
-    setCount('likes', 'likes', stats.likes, 'Likes');
-    setCount('comments', 'comments', stats.comments, 'Comments');
-    setCount('shares', 'shares', stats.shares, 'Shares');
+    for (const [key, label] of METRICS) metric($('.' + key), key, label, stats[key]);
   }
   function message(value) {
     const when = $('.when');
@@ -137,18 +161,16 @@
     if (area === 'local' && changes.instagramGridStats) { gridEnabled = changes.instagramGridStats.newValue !== false; gridEnabled ? scanGrid() : clearGrid(); }
   });
 
-  // Grid chips: upload time and counts on every visible tile of profile, Reels-tab, tagged and saved grids.
+  // Grid chips: upload date and counts on every visible tile of profile, Reels-tab, tagged and saved grids.
   // Chips sit on top of photos, so they own a dark scrim (worst case over white still exceeds 4.5:1).
   let gridEnabled = true, rateLimitedUntil = 0, active = 0, scanQueued = false;
   const tiles = new WeakSet(), queue = [], chips = new Set();
   const GRID_CSS = `:host { all: initial; position: absolute; top: 6px; left: 6px; z-index: 2; pointer-events: none; max-width: calc(100% - 44px); }
-    .chip { box-sizing: border-box; display: grid; gap: 2px; padding: 5px 8px; border-radius: 8px; background: rgb(0 0 0 / .74); color: #fff; font: 600 11.5px/1.3 system-ui, -apple-system, sans-serif; text-shadow: none; }
-    .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .counts { display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 1px; font-weight: 600; }
-    .counts span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-    svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-    .plays svg { fill: currentColor; stroke: none; }
-    .muted { color: #e2e6ee; font-weight: 500; }`;
+    .chip { box-sizing: border-box; display: grid; gap: 3px; min-width: 118px; padding: 6px 9px 7px; border-radius: 9px; background: rgb(0 0 0 / .76); color: #fff; font: 500 11.5px/1.3 system-ui, -apple-system, sans-serif; text-shadow: none; }
+    .date { font-weight: 700; font-size: 12.5px; white-space: nowrap; padding-bottom: 3px; margin-bottom: 1px; border-bottom: 1px solid rgb(255 255 255 / .25); }
+    .row { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; column-gap: 6px; white-space: nowrap; }
+    .row b { font-weight: 700; text-align: right; }
+    svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }`;
   const onGridPage = () => !/^\/(?:p|reel|reels|tv|stories|direct|explore|accounts)(?:\/|$)/.test(location.pathname) && location.pathname !== '/';
   function isTile(anchor) {
     if (!shortcodeOf(anchor.href) || anchor.closest('article, [role="dialog"], header, nav')) return false;
@@ -186,16 +208,15 @@
     const holder = document.createElement('div');
     holder.dataset.superchrome = 'instagram-grid-stats';
     const root = holder.attachShadow({mode: 'open'});
-    const now = new Date(), sameYear = stats.takenAt?.getFullYear() === now.getFullYear();
-    const date = stats.takenAt ? stats.takenAt.toLocaleString(undefined, {month: 'short', day: 'numeric', ...(sameYear ? {} : {year: 'numeric'}), hour: 'numeric', minute: '2-digit'}) : 'Date not shown';
-    root.innerHTML = `<style>${GRID_CSS}</style><div class="chip"><span class="date"></span><span class="counts"></span></div>`;
-    const dateEl = root.querySelector('.date');
-    dateEl.textContent = date;
-    if (stats.takenAt) { const small = document.createElement('span'); small.className = 'muted'; small.textContent = ` · ${ago(stats.takenAt)}`; dateEl.append(small); }
-    const counts = root.querySelector('.counts');
-    for (const [name, value] of [['plays', stats.video ? stats.plays : null], ['likes', stats.likes], ['comments', stats.comments]]) {
-      if (value === null) continue;
-      const span = document.createElement('span'); span.className = name; span.innerHTML = ICONS[name]; span.append(compact(value)); counts.append(span);
+    root.innerHTML = `<style>${GRID_CSS}</style><div class="chip"><span class="date"></span></div>`;
+    const box = root.querySelector('.chip');
+    root.querySelector('.date').textContent = formatDate(stats.takenAt);
+    for (const [key, label] of METRICS) {
+      if (stats[key] === null) continue;
+      const row = document.createElement('span'); row.className = 'row ' + key; row.innerHTML = ICONS[key];
+      const name = document.createElement('span'); name.textContent = label;
+      const value = document.createElement('b'); value.textContent = compact(stats[key]);
+      row.append(name, value); box.append(row);
     }
     holder.title = text(stats);
     if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
