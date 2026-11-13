@@ -5,6 +5,12 @@ from urllib.parse import urlsplit
 os.environ['PATH']=os.pathsep.join(filter(None,[os.environ.get('PATH',''),'/opt/homebrew/bin','/usr/local/bin','/usr/bin','/bin']))
 def send(value):
  data=json.dumps(value).encode();sys.stdout.buffer.write(struct.pack('@I',len(data))+data);sys.stdout.buffer.flush()
+def explain(text):
+ if 'PYI-' in text or 'disallowed by system policy' in text or 'Failed to load Python shared library' in text:return 'macOS blocked the standalone yt-dlp app. Reinstall yt-dlp with Homebrew (brew install yt-dlp) or pip (python3 -m pip install --user yt-dlp), remove the standalone yt-dlp_macos file, then click Check again.'
+ return text[-1500:]
+def saved_file(line):
+ try:return len(line)<1024 and Path(line).is_absolute() and Path(line).is_file()
+ except (OSError,ValueError):return False
 def main():
  header=sys.stdin.buffer.read(4)
  if len(header)!=4:return
@@ -13,7 +19,12 @@ def main():
  request=json.loads(sys.stdin.buffer.read(size))
  if request.get('action')=='ping':
   missing=[tool for tool in ['yt-dlp','ffmpeg'] if not shutil.which(tool)]
-  send({'ok':not missing,'error':'Missing: '+', '.join(missing)} if missing else {'ok':True});return
+  if missing:send({'ok':False,'error':'Missing: '+', '.join(missing)});return
+  try:
+   check=subprocess.run([shutil.which('yt-dlp'),'--version'],capture_output=True,text=True,timeout=60)
+   if check.returncode!=0:raise ValueError(check.stdout+check.stderr)
+  except Exception as e:send({'ok':False,'error':explain(str(e))});return
+  send({'ok':True});return
  if request.get('action')!='download':raise ValueError('Unknown action')
  url=request.get('url',''); parsed=urlsplit(url)
  if parsed.scheme!='https' or parsed.hostname not in {'youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','x.com','www.x.com','twitter.com','www.twitter.com','mobile.twitter.com'} or parsed.username or parsed.password:raise ValueError('Unsupported URL')
@@ -40,7 +51,7 @@ def main():
  tail=[];outputs=[]
  for line in process.stdout:
   line=line.strip()
-  if line and len(line)<4096 and Path(line).is_file() and Path(line) not in outputs:outputs.append(Path(line))
+  if line and saved_file(line) and Path(line) not in outputs:outputs.append(Path(line))
   if line:tail.append(line);tail=tail[-8:];send({'message':line})
  code=process.wait()
  if code==0:
@@ -55,7 +66,7 @@ def main():
     if output!=target:output.unlink()
    finally:
     converted.unlink(missing_ok=True)
- send({'ok':code==0,'message':('Saved to '+str(folder)) if code==0 else 'Download failed. '+ '\n'.join(tail)})
+ send({'ok':code==0,'message':('Saved to '+str(folder)) if code==0 else 'Download failed. '+explain('\n'.join(tail))})
 if __name__=='__main__':
  try:main()
- except Exception as e:send({'ok':False,'message':str(e),'error':str(e)})
+ except Exception as e:send({'ok':False,'message':explain(str(e)),'error':explain(str(e))})

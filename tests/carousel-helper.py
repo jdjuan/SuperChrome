@@ -27,3 +27,13 @@ commands,_,_,error=exercise(3,8,[{'id':'video','thumbnails':[{'url':'https://cdn
 assert commands[0][commands[0].index('--playlist-items')+1]=='1'
 _,converted,sent,error=exercise(outputs=3);assert len(converted)==3 and sent[-1]['ok']
 print('PASS: selected carousel entry, mixed-carousel safety, poster matching, conversion of every output.')
+# A long error line (macOS-blocked PyInstaller yt-dlp) must not crash path detection and must be explained.
+assert host.saved_file('[PYI-2576:ERROR] '+'x'*600) is False and host.saved_file('relative.mp4') is False
+assert 'brew install yt-dlp' in host.explain("[PYI-2576:ERROR] Failed to load Python shared library ... library load disallowed by system policy")
+with tempfile.TemporaryDirectory() as tmp:
+ data=json.dumps({'action':'download','url':'https://www.youtube.com/watch?v=a'}).encode();sent=[]
+ blocked="[PYI-2576:ERROR] Failed to load Python shared library '/var/folders/x/T/MEI1/Python' "+'y'*400+' library load disallowed by system policy'
+ with patch.object(host.sys,'stdin',SimpleNamespace(buffer=io.BytesIO(struct.pack('@I',len(data))+data))),patch.object(host,'send',sent.append),patch.object(host.shutil,'which',lambda x:'/bin/'+x),patch.object(host.Path,'home',lambda:Path(tmp)),patch.object(host.subprocess,'Popen',lambda a,**k:SimpleNamespace(stdout=iter([blocked+'\n']),wait=lambda:1)):
+  host.main()
+ assert sent[-1]['ok'] is False and 'brew install yt-dlp' in sent[-1]['message'],sent[-1]
+print('PASS: blocked standalone yt-dlp output is explained instead of crashing with File name too long.')

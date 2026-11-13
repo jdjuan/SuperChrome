@@ -18,21 +18,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener(async details => {
   } catch { /* The source or target tab may already have closed. */ }
 });
 
-let port=null;
-chrome.runtime.onMessage.addListener((message,sender,reply)=>{
- if(message.action==='ping'){chrome.runtime.sendNativeMessage('io.jdjuan.local_video',{action:'ping'},r=>{reply(chrome.runtime.lastError?{ok:false,error:chrome.runtime.lastError.message}:r)});return true;}
- if(message.action!=='download')return;
- if(port){reply({error:'A download is already running.'});return;}
- try{const url=new URL(message.url);if(url.protocol!=='https:'||!['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','x.com','www.x.com','twitter.com','www.twitter.com','mobile.twitter.com'].includes(url.hostname))throw Error('Enter a YouTube, Instagram, or X HTTPS video URL.');}catch(e){reply({error:e.message});return;}
- const jobUrl=message.url;
- const updateJob=result=>chrome.storage.local.set({job:{...result,url:jobUrl,slide:message.slide}});
- updateJob({message:'Starting download…'});
- let finished=false;
- port=chrome.runtime.connectNative('io.jdjuan.local_video');
- port.onMessage.addListener(result=>{if(typeof result.ok==='boolean')finished=true;updateJob(result);});
- port.onDisconnect.addListener(()=>{const error=chrome.runtime.lastError;if(!finished)updateJob({ok:false,message:error?.message||'Download helper disconnected before completion. Click to retry.'});port=null;});
- port.postMessage({action:'download',url:message.url,slide:message.slide,slideCount:message.slideCount,poster:message.poster});reply({ok:true});
-});
+importScripts('download-background.js');
 importScripts('hide-background.js');
 
 importScripts('youtube-recovery-background.js');

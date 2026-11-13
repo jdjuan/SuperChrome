@@ -16,11 +16,39 @@
   let latestJob = null;
   const sourceFor = img => img.currentSrc || img.src;
   function videoUrl(video) {
-    if (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname)) return location.href;
+    if (/^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(location.pathname)) return location.href;
     const scope = video.closest('article') || video.closest('main') || document;
-    const link = [...scope.querySelectorAll('a[href]')].find(a => /^\/(p|reel|reels)\/[^/]+/.test(new URL(a.href).pathname));
-    return link?.href || (/^\/(p|reel|reels)\/[^/]+/.test(location.pathname) ? location.href : null);
+    const link = [...scope.querySelectorAll('a[href]')].find(a => /^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(new URL(a.href).pathname));
+    return link?.href || (/^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(location.pathname) ? location.href : null);
   }
+  const SHORTCODE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const fileName = value => { try { return new URL(value).pathname.split('/').pop(); } catch { return ''; } };
+  async function instagramMedia(postUrl, selection = {}) {
+    const code = new URL(postUrl).pathname.match(/^\/(?:[\w.]+\/)?(?:p|reels?|tv)\/([\w-]+)/)?.[1];
+    if (!code) throw Error('Open this video’s post first.');
+    let id = 0n;
+    for (const char of code.slice(0, 11)) id = id * 64n + BigInt(SHORTCODE.indexOf(char));
+    const response = await fetch(`/api/v1/media/${id}/info/`, {credentials: 'include', headers: {'X-IG-App-ID': '936619743392459', 'X-Requested-With': 'XMLHttpRequest'}});
+    if (!response.ok) throw Error(response.status === 401 || response.status === 403 ? 'Log in to Instagram to download this video.' : 'Instagram did not return this video.');
+    const item = (await response.json()).items?.[0];
+    if (!item) throw Error('Instagram did not return this video.');
+    let entries = item.carousel_media?.length ? item.carousel_media : [item];
+    if (selection.slide && entries.length > 1) {
+      const poster = fileName(selection.poster);
+      const matches = poster ? entries.filter(entry => entry.image_versions2?.candidates?.some(c => fileName(c.url) === poster)) : [];
+      if (matches.length === 1) entries = matches;
+      else if (entries.length === selection.slideCount && entries[selection.slide - 1]) entries = [entries[selection.slide - 1]];
+      else throw Error('Could not safely identify this carousel slide. Open its individual post and retry.');
+    }
+    const urls = entries.map(entry => [...(entry.video_versions || [])].sort((a, b) => b.width * b.height - a.width * a.height)[0]?.url).filter(Boolean);
+    if (!urls.length) throw Error('No video found in this post.');
+    return urls.map((url, i) => ({url, filename: `instagram-${code}${urls.length > 1 ? `-${i + 1}` : ''}.mp4`}));
+  }
+  chrome.runtime?.onMessage?.addListener((message, sender, reply) => {
+    if (message.action !== 'resolveInstagram') return;
+    instagramMedia(message.url).then(media => reply({media}), error => reply({error: error.message}));
+    return true;
+  });
   function videoSelection(video) {
     const slide = video.closest('li');
     if (!slide) return {};
@@ -37,8 +65,8 @@
     button.disabled = !done;
     button.textContent = done ? (job.ok ? '✓' : '!') : '…';
     const raw = job.message || job.error || 'Downloading…';
-    const percent = raw.match(/\[download\]\s+(\d+(?:\.\d+)?%)/)?.[1];
-    const message = done ? (job.ok ? 'Saved to Downloads' : `${raw} Click to retry.`)
+    const percent = job.percent || raw.match(/\[download\]\s+(\d+(?:\.\d+)?%)/)?.[1];
+    const message = done ? (job.ok ? 'Saved to Downloads' : `${raw}${job.needsHelper ? '' : ' Click to retry.'}`)
       : raw.includes('Preparing compatible') ? 'Preparing compatible MP4…'
       : raw.includes('already been downloaded') ? 'Video already exists. Checking MP4…'
       : percent ? `Downloading ${percent}` : 'Downloading…';
@@ -60,7 +88,10 @@
       try {
         const url = videoUrl(img);
         if (!url) throw Error('Open this video’s post first.');
-        const result = await chrome.runtime.sendMessage({action: 'download', url, ...videoSelection(img)});
+        const selection = videoSelection(img);
+        let media, directError;
+        try { media = await instagramMedia(url, selection); } catch (error) { directError = error.message; }
+        const result = await chrome.runtime.sendMessage({action: 'download', url, ...selection, media, directError});
         if (!result?.ok) throw Error(result?.error || 'Video helper unavailable.');
         // Native job updates report actual progress and completion.
       } catch (error) {
@@ -102,7 +133,7 @@
     if (!host.isConnected) document.documentElement.append(host);
     const found = new Set();
     for (const img of document.querySelectorAll('article img, main img, video')) {
-      if (!img.closest('article') && !/^\/(p|reel|reels)\//.test(location.pathname)) continue;
+      if (!img.closest('article') && !/^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(location.pathname)) continue;
       if (img.tagName === 'IMG' && img.parentElement?.querySelector('video')) continue;
       const kind = img.tagName === 'VIDEO' ? 'video' : 'image';
       const rect = img.getBoundingClientRect();
