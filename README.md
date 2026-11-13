@@ -31,7 +31,7 @@ Cloning this repo is also supported: load its `extension` folder. The manifest k
 
 ## Updates
 
-When you open the popup, SuperChrome checks the latest public GitHub release, at most once per day. **Check updates** retries immediately. New versions show **Copy update prompt**, with a pinned release URL and checksum file. The prompt guides an AI through replacing files in place, preserving the extension ID and browser storage. Browsers block AI tools from reloading extensions, so when the new files are on disk the popup shows **Reload SuperChrome**, which reloads the extension itself (an **Open the extensions page** link is the fallback). Updates are not silently installed.
+When you open the popup, SuperChrome checks the latest public GitHub release, at most once per day. **Check updates** retries immediately. New versions show **Copy update prompt**, with a pinned release URL and checksum file. The prompt guides an AI through replacing files in place, preserving the extension ID and browser storage. Browsers block AI tools from reloading extensions, so SuperChrome reloads itself: once the new files are on disk, it finishes the update the next time you focus Chrome, switch tabs or load a page. If the popup is opened first, it shows only a **Finish updating** button (an **Open the extensions page** link in the update steps is the last-resort fallback). Refresh open websites afterwards. Updates are not silently installed.
 
 The website uses GitHub's permanent latest-release URL, so it does not need a version edit with every release. Released ZIPs include the extension, portable helper source and installation instructions. SHA256SUMS.txt provides an integrity check, not an independent publisher signature.
 

@@ -22,3 +22,5 @@ importScripts('download-background.js');
 importScripts('hide-background.js');
 
 importScripts('youtube-recovery-background.js');
+
+importScripts('self-update-background.js');
