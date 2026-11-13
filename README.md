@@ -1,5 +1,7 @@
 # SuperChrome
 
+![SuperChrome: hide feeds, dark mode and popup blocking for your favorite websites](docs/screenshot.jpg)
+
 A small browser toolkit for Chrome and Brave. [See it in action and install](https://jdjuan.io/superchrome).
 
 ## Tools
@@ -147,3 +149,7 @@ The Instagram on-video arrow saves only the visible carousel slide, including vi
 ### Video shortcut controls (3.8.7)
 
 Added a Video Shortcuts sidebar panel and persistent five-second rewind switch that updates open players. The previous version only injected into top-level YouTube pages; embedded players now receive the shortcut, including youtube-nocookie embeds. Netflix uses its managed seek API when available, with a standard media fallback. Local regression tests cover settings changes and embedded URLs. Live playback verification remains pending.
+
+## License
+
+[MIT](LICENSE)
