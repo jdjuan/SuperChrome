@@ -2,7 +2,7 @@
  const API='https://api.github.com/repos/jdjuan/SuperChrome/releases/latest';
  const ROOT='https://github.com/jdjuan/SuperChrome/releases';
  const current=chrome.runtime.getManifest().version;
- const status=document.getElementById('update-status'),copy=document.getElementById('copy-update-prompt'),check=document.getElementById('check-updates');
+ const status=document.getElementById('update-status'),copy=document.getElementById('copy-update-prompt'),check=document.getElementById('check-updates'),reload=document.getElementById('reload-superchrome'),steps=document.getElementById('update-steps'),openExt=document.getElementById('open-extensions');
  let latest=null,busy=false;
  const parts=v=>/^\d+(\.\d+){0,3}$/.test(v)?v.split('.').map(Number):null;
  function newer(a,b){a=parts(a);b=parts(b);if(!a||!b)return false;for(let i=0;i<4;i++){if((a[i]||0)!==(b[i]||0))return(a[i]||0)>(b[i]||0);}return false;}
@@ -33,9 +33,19 @@
  }
  copy.onclick=async()=>{
   if(!latest||!newer(latest.version,current))return;
-  const prompt=`Update my existing SuperChrome extension from ${current} to ${latest.version} in Chrome and/or Brave. Download ${latest.url} and ${latest.checksum}. Verify the ZIP against SHA-256 before using it, and inspect the manifest and bundled sources. Find the existing installed extension folder; ask me for its location if needed. Back up the folder, then replace extension files IN PLACE using the folder containing manifest.json from the ZIP. Do not uninstall the extension, clear browser storage, overwrite unrelated files or change its manifest key. Preserve extension ID ${chrome.runtime.id} and browser preferences. The ZIP includes a helper subfolder; keep any existing helper and native-host registrations working, and only update them if needed after review. Use supported browser UI to reload SuperChrome in each installed browser, then refresh affected website tabs. If your tools cannot perform the reload, give me exact short steps rather than bypassing restrictions. Verify the loaded extension version is ${latest.version}, its ID is unchanged, and existing settings remain. Do not claim success just because files were extracted. Follow your tool approval requirements. No security setting changes, credentials or browser cookies are needed.`;
-  try{await navigator.clipboard.writeText(prompt);status.textContent='Copied. Paste into your AI.';}catch{status.textContent='Copy failed. Try again.';}
+  const prompt=`Update my existing SuperChrome extension from ${current} to ${latest.version} in Chrome and/or Brave. Download ${latest.url} and ${latest.checksum}. Verify the ZIP against SHA-256 before using it, and inspect the manifest and bundled sources. Find the existing installed extension folder; ask me for its location if needed. Back up the folder, then replace extension files IN PLACE using the folder containing manifest.json from the ZIP. Do not uninstall the extension, clear browser storage, overwrite unrelated files or change its manifest key. Preserve extension ID ${chrome.runtime.id} and browser preferences. The ZIP includes a helper subfolder; keep any existing helper and native-host registrations working, and only update them if needed after review. Do NOT try to reload the extension yourself (browsers block automation on chrome://extensions). When the files are replaced, tell me exactly: "Files updated. Open the SuperChrome popup and click Reload SuperChrome, then refresh any open websites." After I confirm, check that the SuperChrome popup shows v${latest.version}, the ID is unchanged, and settings remain. Do not claim success just because files were extracted. Follow your tool approval requirements. No security setting changes, credentials or browser cookies are needed.`;
+  try{await navigator.clipboard.writeText(prompt);status.textContent='Prompt copied.';steps.hidden=false;}catch{status.textContent='Copy failed. Try again.';}
  };
+ // An unpacked extension serves its files from disk, so a newer manifest here means the update is installed but not yet loaded.
+ async function checkDisk(){
+  try{
+   const m=await (await fetch(chrome.runtime.getURL('manifest.json'),{cache:'no-store'})).json();
+   if(m.version&&m.version!==current){reload.hidden=false;reload.textContent=`Reload SuperChrome to finish updating to v${m.version}`;copy.hidden=true;steps.hidden=true;status.textContent=`v${m.version} files installed · Running v${current}`;return true;}
+  }catch{}
+  return false;
+ }
+ reload.onclick=()=>chrome.runtime.reload();
+ openExt.onclick=e=>{e.preventDefault();chrome.tabs.create({url:`chrome://extensions/?id=${chrome.runtime.id}`});};
  check.onclick=()=>refresh(true);
- refresh();
+ checkDisk().then(found=>{if(!found)refresh();});
 })();
