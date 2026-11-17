@@ -1,7 +1,9 @@
 (() => {
   if (globalThis.__scAds) return;
   globalThis.__scAds = true;
-  let resultsText=null, resultsAt=0, enabled = true, filterBar = true, view = {sort:'meta',min:0,format:'all',active:false,winners:false}, bar = null, loading = null, pending, ready=false, activeLookup=null, saveTimer;
+  let resortNow=false, resultsText=null, resultsAt=0, topCache=0, topAt=0, lastScan=0, rankSeq=0, freshCount=0, viewKey=null, memory={}, memoryTimer;
+  const seen=new WeakSet(), ranks=new Map(), MEMORY_KEY='adLibraryViewsV1';
+  let enabled = true, filterBar = true, view = {sort:'meta',min:0,format:'all',active:false,winners:false}, bar = null, loading = null, pending, ready=false, activeLookup=null, saveTimer;
   const DAY=86400000, TTL=21*DAY, CACHE_KEY='adLibraryAudienceV2';
   let cache={};
   let workerId=null, worker=false, workerAuthorized=false, identityReady=false;
@@ -79,6 +81,11 @@
   const isWinner=f=>{const d=daysOf(f);return !f.inactive && !f.low && d!==null && (d>=180 || (d>=90 && f.reuse>=2));};
   function render(r) {
     const f=r.facts, a=audience.get(r.id);
+    const key=JSON.stringify([f,a,Math.floor(Date.now()/DAY)]);
+    if(r.key===key && Date.now()-(r.themeAt||0)<5000)return;
+    r.themeAt=Date.now();
+    if(r.key===key){SuperChromeTheme.apply(r.host);return;}
+    r.key=key;
     const days=daysOf(f);
     const win=r.root.querySelector('.winner');win.hidden=!isWinner(f);
     const count=r.root.querySelector('.days');
@@ -137,12 +144,11 @@
     for(const node of document.querySelectorAll('[data-sc-winner]'))node.removeAttribute('data-sc-winner');
   }
   function winnerStyle(){
-    if(document.getElementById('sc-ad-winner-style-v2'))return;
-    const style=document.createElement('style');style.id='sc-ad-winner-style-v2';
+    if(document.getElementById('sc-ad-winner-style-v3'))return;
+    const style=document.createElement('style');style.id='sc-ad-winner-style-v3';
     // Box shadows only: positioning the card would lift it above Meta's sticky header.
-    style.textContent=`[data-sc-winner]{align-self:start!important;border-radius:12px!important;animation:sc-winner-glow 3.2s ease-in-out infinite}
-    @keyframes sc-winner-glow{0%,100%{box-shadow:0 0 0 3px #ffc53d,0 0 0 6px rgba(255,197,61,.25),0 14px 34px -6px rgba(255,165,0,.6)}50%{box-shadow:0 0 0 3px #2fbf71,0 0 0 6px rgba(47,191,113,.25),0 14px 38px -6px rgba(47,191,113,.6)}}
-    @media (prefers-reduced-motion:reduce){[data-sc-winner]{animation:none;box-shadow:0 0 0 3px #ffc53d,0 0 0 6px rgba(47,191,113,.3),0 14px 34px -6px rgba(255,165,0,.55)}}`;
+    style.textContent=`[data-sc-winner]{align-self:start!important;border-radius:12px!important;box-shadow:0 0 0 2px #d4a72c,0 0 0 6px rgba(212,167,44,.14),0 22px 44px -22px rgba(120,84,0,.55)!important;transition:box-shadow .25s}
+    [data-sc-winner]:hover{box-shadow:0 0 0 2px #c79a1e,0 0 0 7px rgba(212,167,44,.2),0 26px 50px -22px rgba(120,84,0,.65)!important}`;
     (document.head||document.documentElement).append(style);
   }
   function applyView(){
@@ -164,12 +170,16 @@
       if(filtering())mark(child,'data-sc-filtered','display','none');else unmark(child,'data-sc-filtered','display');
       if(view.sort!=='meta')mark(child,'data-sc-order','order','100000');else unmark(child,'data-sc-order','order');
     }
-    if(view.sort==='meta')for(const r of list)unmark(cardOf(r),'data-sc-order','order');
+    if(view.sort==='meta'){ranks.clear();freshCount=0;for(const r of list)unmark(cardOf(r),'data-sc-order','order');}
     else{
       const time=r=>Number.isFinite(r.facts.start)?r.facts.start:Infinity;
       const run=r=>daysOf(r.facts)??-1;
       const sorted=list.slice().sort(view.sort==='reuse'?(a,b)=>b.facts.reuse-a.facts.reuse||run(b)-run(a):(a,b)=>run(b)-run(a)||time(a)-time(b));
-      sorted.forEach((r,i)=>mark(cardOf(r),'data-sc-order','order',String(i)));
+      // While the reader is inside the results, keep sorted cards where they are and queue new ones at the end.
+      const reading=bar?.isConnected && bar.getBoundingClientRect().top<=topCache+2 && scrollY>0;
+      if(!ranks.size || !reading || loading===null && resortNow){ranks.clear();rankSeq=0;for(const r of sorted)ranks.set(r.id,rankSeq++);freshCount=0;resortNow=false;}
+      else{let fresh=0;for(const r of sorted)if(!ranks.has(r.id)){ranks.set(r.id,rankSeq++);fresh++;}freshCount+=fresh;}
+      for(const r of list)mark(cardOf(r),'data-sc-order','order',String(ranks.get(r.id)));
     }
     renderBar(list,shown,containers);
   }
@@ -205,8 +215,9 @@
     select{appearance:none;font-weight:600;font-size:13px;font-family:inherit;color:var(--sc-text);background:var(--sc-button) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/12px;border:1px solid var(--sc-border);border-radius:9px;height:32px;padding:0 28px 0 10px;cursor:pointer}
     .check{height:32px;padding:0 11px;border:1px solid var(--sc-border);border-radius:9px;background:var(--sc-button);color:var(--sc-text);cursor:pointer}
     .check input{margin:0;accent-color:var(--sc-accent);width:15px;height:15px}
-    .win:has(input:checked){color:#4a2c00;background:linear-gradient(135deg,#ffe58a,#ffc53d 55%,#9fe3b8);border-color:#e0a800}
-    .win svg{width:14px;height:14px;fill:currentColor}
+    .win svg{fill:#d4a72c}.win:has(input:checked){color:#fff;background:#16181d;border-color:#d4a72c}.win:has(input:checked) input{accent-color:#d4a72c}.win:has(input:checked) svg{fill:#f2c94c}
+    .fresh{height:32px;padding:0 12px;border:1px solid var(--sc-accent);border-radius:9px;background:transparent;color:var(--sc-accent);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}.memory{white-space:nowrap}
+    .win svg{width:14px;height:14px}
     .load{margin-left:auto;height:34px;padding:0 16px;border:0;border-radius:10px;font-weight:700;font-size:13px;font-family:inherit;color:var(--sc-surface);background:var(--sc-accent);cursor:pointer}
     .load[aria-pressed=true]{color:var(--sc-text);background:var(--sc-button);border:1px solid var(--sc-border)}
     select:focus-visible,.check:has(input:focus-visible),.load:focus-visible{outline:2px solid var(--sc-accent);outline-offset:2px}
@@ -219,13 +230,15 @@
     <label>Format ${opts('format',[['all','All'],['video','Video'],['image','Image'],['carousel','Carousel']])}</label>
     <label class="check"><input type="checkbox" data-k="active">Active only</label>
     <label class="check win"><input type="checkbox" data-k="winners"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>Winners only</label>
+    <button class="fresh" type="button" hidden></button>
     <button class="load" type="button" aria-pressed="false">Load all results</button>
     </div><div class="stats" role="status"></div></div>`;
     for(const el of root.querySelectorAll('[data-k]'))el.addEventListener('change',()=>{
       const k=el.dataset.k;view={...view,[k]:el.type==='checkbox'?el.checked:k==='min'?Number(el.value):el.value};
-      chrome.storage.local.set({adLibraryView:view}).catch(()=>{});applyView();
+      chrome.storage.local.set({adLibraryView:view}).catch(()=>{});resortNow=true;applyView();
     });
     root.querySelector('.load').onclick=()=>loading?stopLoading():loadAll();
+    root.querySelector('.fresh').onclick=()=>{resortNow=true;applyView();bar?.scrollIntoView?.({block:'start'});};
     return host;
   }
   function stopLoading(){if(loading){loading.stop=true;}}
@@ -236,7 +249,24 @@
       scrollTo(0,document.documentElement.scrollHeight);await wait(1300);scan();
       if(records.size===last)still++;else{still=0;last=records.size;}
     }
-    loading=null;applyView();bar?.scrollIntoView({block:'start'});
+    loading=null;resortNow=true;applyView();rememberView(true);bar?.scrollIntoView?.({block:'start'});
+  }
+  function currentViewKey(){
+    const q=new URLSearchParams(location.search);
+    const page=q.get('view_all_page_id');
+    return page?`page:${page}:${q.get('country')||''}:${q.get('active_status')||''}`:q.get('q')?`q:${q.get('q').toLowerCase()}:${q.get('country')||''}:${q.get('active_status')||''}`:null;
+  }
+  // Remembers, per advertiser page or search, how many ads were loaded and how many were winners.
+  function rememberView(done,list=[...records.values()],winners=list.filter(r=>isWinner(r.facts)).length){
+    viewKey=currentViewKey();if(!viewKey)return;
+    const past=memory[viewKey];
+    if(!done && past && past.loaded>=list.length)return;
+    if(!done && list.length<10)return;
+    memory[viewKey]={at:Date.now(),loaded:list.length,winners};
+    clearTimeout(memoryTimer);memoryTimer=setTimeout(()=>{
+      const kept=Object.entries(memory).filter(([,v])=>Date.now()-v.at<TTL).sort((a,b)=>b[1].at-a[1].at).slice(0,200);
+      memory=Object.fromEntries(kept);chrome.storage.local.set({[MEMORY_KEY]:memory}).catch(()=>{});
+    },1000);
   }
   function renderBar(list,shown,containers){
     const show=enabled && filterBar && !worker && list.length>1 && containers.size>0;
@@ -246,18 +276,23 @@
     if(bar.nextElementSibling!==grid)grid.parentElement.insertBefore(bar,grid);
     const root=bar.shadowRoot;
     for(const el of root.querySelectorAll('[data-k]')){const v=view[el.dataset.k];if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);}
-    bar.style.setProperty('--sc-top',stickyTop()+'px');
+    if(Date.now()-topAt>2000){topAt=Date.now();topCache=stickyTop();}
+    bar.style.setProperty('--sc-top',topCache+'px');
     const days=shown.map(r=>daysOf(r.facts)).filter(d=>d!==null).sort((a,b)=>a-b);
     const median=days.length?days[Math.floor((days.length-1)/2)]:null,min=view.min||30;
     if(Date.now()-resultsAt>3000){resultsAt=Date.now();const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);resultsText=null;for(let n;(n=w.nextNode());){const m=n.data.match(/^\s*[~>]?\s?[\d.,]+K?\s+results?\s*$/);if(m){resultsText=m[0].trim();break;}}}
     const total=resultsText;
     const winners=shown.filter(r=>isWinner(r.facts)).length;
     root.querySelector('.stats').innerHTML=`Showing <b>${shown.length}</b> of ${list.length} loaded ads${total?` (${total.replace(/\s+/g,' ').trim()})`:''}${median!==null?` · median <b>${median} days</b> running`:''} · <b>${days.filter(d=>d>=min).length}</b> at ${min}+ days · <b>${winners}</b> ${winners===1?'winner':'winners'}`;
+    rememberView(false,list,winners);
+    const past=viewKey&&memory[viewKey];
+    if(past && past.loaded>list.length){const ago=Math.max(0,Math.round((Date.now()-past.at)/DAY));root.querySelector('.stats').insertAdjacentHTML('beforeend',` <span class="memory">· Last visit${ago?` (${ago===1?'yesterday':ago+' days ago'})`:''}: <b>${past.winners}</b> ${past.winners===1?'winner':'winners'} in ${past.loaded} ads</span>`);}
+    const fresh=root.querySelector('.fresh');fresh.hidden=!(freshCount>0 && view.sort!=='meta');fresh.textContent=`↻ Sort ${freshCount} new`;
     const load=root.querySelector('.load');load.setAttribute('aria-pressed',String(!!loading));load.textContent=loading?`Loading… ${list.length} ads · Stop`:'Load all results';
     SuperChromeTheme.apply(bar);
   }
   function scan() {
-    pending=null;
+    pending=null;lastScan=performance.now();
     if(!identityReady)return;
     if(!enabled || !location.pathname.startsWith('/ads/library')) {
       stopLookup();stopLoading();for(const r of records.values()) restore(r); records.clear(); clearView(); bar?.remove(); bar=null; return;
@@ -276,14 +311,17 @@
       return;
     }
     for(const [header,r] of records) if(!header.isConnected) {restore(r);records.delete(header);}
+    // Each button is classified once; rescanning every button against every ad made large pages slow.
     for(const button of document.querySelectorAll('[role=button],button')) {
-      if(!/^(See ad details|See summary details)$/i.test(text(button)) || button.closest('[role=dialog]')) continue;
-      if([...records.keys()].some(node=>node.contains(button))) continue;
+      if(seen.has(button))continue;
+      if(!/^(See ad details|See summary details)$/i.test((button.textContent||'').trim()) || button.closest('[role=dialog]')) {seen.add(button);continue;}
       let header=button.parentElement;
       while(header && !idOf(header.textContent)) header=header.parentElement;
-      if(!header || header===document.body || records.has(header)) continue;
+      if(!header || header===document.body) continue;
+      if(records.has(header)){seen.add(button);continue;}
       // Leave groups of ads untouched rather than collapsing unrelated content.
-      if((text(header).match(/Library ID:/g)||[]).length!==1) continue;
+      if((header.textContent.match(/Library ID:/g)||[]).length!==1) {seen.add(button);continue;}
+      seen.add(button);
       const id=idOf(text(header)), host=document.createElement('div');
       host.dataset.superchrome='ad-library';
       const root=host.attachShadow({mode:'open'});
@@ -303,7 +341,7 @@
       .duration svg{width:17px;height:17px}.duration .ic{display:none}.duration[data-tier=new] .i-new,.duration[data-tier=warm] .i-warm,.duration[data-tier=hot] .i-hot,.duration[data-tier=fire] .i-hot{display:block}.duration[data-inactive=true] .ic{display:none!important}.duration[data-inactive=true] .i-off{display:block!important}
       .duration[data-tier=fire] .i-hot{fill:currentColor;fill-opacity:.25}
       .days{font-size:20px;font-weight:780;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.unit{font-size:11px;font-weight:600}
-      .winner{color:#4a2c00;background:linear-gradient(135deg,#ffe58a,#ffc53d 55%,#9fe3b8);box-shadow:0 2px 10px -2px rgba(255,170,0,.6);letter-spacing:.2px}.winner svg{fill:currentColor;stroke:none}
+      .winner{color:#fff;background:#16181d;border:1px solid #d4a72c;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:0 10px 0 8px}.winner svg{fill:#f2c94c;stroke:none;width:14px;height:14px}
       .reuse{color:var(--reuse-fg);background:var(--reuse-bg)}.low{color:var(--low-fg);background:var(--low-bg)}
       .audience{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
       .fact{height:28px;padding:0 9px;border:1px solid var(--chip-border);background:var(--chip-bg);color:var(--sc-text);overflow:hidden;text-overflow:ellipsis}
@@ -327,9 +365,17 @@
     applyView();
     loadAudience();
   }
-  function schedule(){if(!pending)pending=setTimeout(scan,150);}
+  // Process new cards in the next animation frame, before the browser paints them, so rows and
+  // filters never flash. Back-to-back scans are spaced out to keep busy pages responsive.
+  function schedule(){
+    if(pending)return;
+    const raf=globalThis.requestAnimationFrame && !document.hidden ? globalThis.requestAnimationFrame : f=>setTimeout(f,16);
+    const gap=performance.now()-lastScan;
+    pending=gap>=80 ? (raf(scan),true) : setTimeout(()=>raf(scan),80-gap);
+  }
   new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
-  chrome.storage.local.get({adLibraryEnabled:true,adLibraryFilterBar:true,adLibraryView:null,adLibrarySortOldest:false,[CACHE_KEY]:{}}).then(s=>{
+  chrome.storage.local.get({adLibraryEnabled:true,adLibraryFilterBar:true,adLibraryView:null,adLibrarySortOldest:false,[CACHE_KEY]:{},[MEMORY_KEY]:{}}).then(s=>{
+    memory=s[MEMORY_KEY]&&typeof s[MEMORY_KEY]==='object'?s[MEMORY_KEY]:{};viewKey=currentViewKey();
     enabled=s.adLibraryEnabled!==false;filterBar=s.adLibraryFilterBar!==false;
     if(s.adLibraryView && typeof s.adLibraryView==='object')view={...view,...s.adLibraryView};else if(s.adLibrarySortOldest===true)view.sort='longest';
     if(!filterBar)view={sort:'meta',min:0,format:'all',active:false,winners:false};cache=s[CACHE_KEY]||{};

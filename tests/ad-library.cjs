@@ -47,6 +47,12 @@ dom.window.close();console.log('PASS: days running/reuse, low impression cue, co
  assert.equal(cards[1].querySelector('[data-superchrome]').shadowRoot.querySelector('.winner').hidden,false);
  assert.match($('.stats').textContent,/Showing 4 of 4 loaded ads \(~4,000 results\).*2 winners/);
  await set('sort','reuse');assert.equal(cards[3].style.order,'0','most reused first');
+ await set('sort','longest');Object.defineProperty(w,'scrollY',{value:600,configurable:true});
+ w.document.querySelector('#grid').insertAdjacentHTML('beforeend',card(5,'Active Started running on Jan 1, 2020'));await new Promise(r=>setTimeout(r,150));
+ const late=w.document.querySelectorAll('.card')[4];assert.equal(late.style.order,'4','new card queues at the end while reading');
+ assert.equal($('.fresh').hidden,false);assert.equal($('.fresh').textContent,'↻ Sort 1 new');
+ $('.fresh').click();assert.equal(late.style.order,'0','sorting new cards places them');assert.equal($('.fresh').hidden,true);
+ late.remove();Object.defineProperty(w,'scrollY',{value:0,configurable:true});await new Promise(r=>setTimeout(r,150));
  await set('format','video');assert.equal(shown(),'2');await set('format','carousel');assert.equal(shown(),'3');await set('format','image');assert.equal(shown(),'14');await set('format','all');
  await set('min','180');assert.equal(shown(),'23');await set('active',true);assert.equal(shown(),'2');assert.equal(w.document.querySelector('#other').style.display,'none');
  await set('active',false);await set('min','0');await set('winners',true);assert.equal(shown(),'24');assert.equal(store.adLibraryView.winners,true);
