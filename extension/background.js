@@ -24,3 +24,5 @@ importScripts('hide-background.js');
 importScripts('youtube-recovery-background.js');
 
 importScripts('self-update-background.js');
+
+importScripts('ad-library-background.js');
