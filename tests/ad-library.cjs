@@ -28,3 +28,24 @@ dom.window.close();console.log('PASS: days running/reuse, low impression cue, co
  p.resolve({value:a});await new Promise(r=>setTimeout(r,500));assert.equal(p.root.querySelector('.fact').textContent,'🇪🇸');assert.ok(p.saves.length,'audience persisted');p.d.window.close();
  console.log('PASS: 21-day audience cache, automatic stale refresh, background lookup and persisted results.');
 })();
+
+(async()=>{
+ const card=(id,date)=>`<div class="card"><div><span>Active Library ID: ${id} ${date}</span><button>See ad details</button></div><p>Sponsored</p></div>`;
+ const d=new JSDOM(`<body style="background:white"><div id="grid">${card(1,'Started running on Nov 1, 2026')}${card(2,'Started running on Jan 5, 2024')}${card(3,'Inactive Jul 11, 2024 - Feb 23, 2026')}<div id="other">group</div></div></body>`,{url:'https://www.facebook.com/ads/library/',runScripts:'outside-only'});
+ const w=d.window;let store={},changed;w.matchMedia=()=>({matches:false});
+ w.chrome={runtime:{sendMessage:async()=>({authorized:false})},storage:{local:{get:async x=>({...x,...store}),set:async x=>{Object.assign(store,x);}},onChanged:{addListener:f=>changed=f}}};
+ for(const f of ['theme.js','ad-library.js'])w.eval(fs.readFileSync('extension/'+f,'utf8'));
+ await new Promise(r=>setTimeout(r,250));
+ const cards=[...w.document.querySelectorAll('.card')],host=w.document.querySelector('[data-superchrome="ad-library-sort"]');
+ assert.ok(host,'oldest first button shown');assert.equal(cards[0].style.order,'','Meta order by default');
+ const inactive=cards[2].querySelector('[data-superchrome]').shadowRoot;
+ assert.equal(inactive.querySelector('.days').textContent,'592','inactive range uses start to end dates');
+ host.shadowRoot.querySelector('button').click();
+ assert.deepEqual(cards.map(c=>c.style.order),['2','0','1']);assert.equal(w.document.querySelector('#other').style.order,'100000');
+ assert.equal(store.adLibrarySortOldest,true);assert.equal(host.shadowRoot.querySelector('button').getAttribute('aria-pressed'),'true');
+ assert.equal(w.document.querySelector('#grid').children[0],cards[0],'DOM nodes are never moved');
+ host.shadowRoot.querySelector('button').click();assert.deepEqual(cards.map(c=>c.style.order),['','','']);
+ changed({adLibrarySortButton:{newValue:false}},'local');await new Promise(r=>setTimeout(r,250));
+ assert.equal(w.document.querySelector('[data-superchrome="ad-library-sort"]'),null,'popup toggle hides button');
+ d.window.close();console.log('PASS: oldest-first ordering without DOM moves, inactive run length, restore and popup toggle.');
+})();

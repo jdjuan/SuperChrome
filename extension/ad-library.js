@@ -1,7 +1,7 @@
 (() => {
   if (globalThis.__scAds) return;
   globalThis.__scAds = true;
-  let enabled = true, pending, ready=false, activeLookup=null, saveTimer;
+  let enabled = true, sortButton = true, sortOldest = false, sortHost = null, pending, ready=false, activeLookup=null, saveTimer;
   const DAY=86400000, TTL=21*DAY, CACHE_KEY='adLibraryAudienceV2';
   let cache={};
   let workerId=null, worker=false, workerAuthorized=false, identityReady=false;
@@ -40,13 +40,15 @@
     if(name && name!==code) countries.set(name, String.fromCodePoint(127397+a,127397+b));
   }
   function facts(s) {
-    const date = s.match(/Started running on\s+([A-Za-z]+ \d{1,2}, \d{4})/i)?.[1];
-    const start = Date.parse(date || '');
+    const D='([A-Z][a-z]+ \\d{1,2}, \\d{4})';
+    const range = s.match(new RegExp(D+'\\s*[-–]\\s*'+D));
+    const date = s.match(/Started running on\s+([A-Za-z]+ \d{1,2}, \d{4})/i)?.[1] || range?.[1];
+    const start = Date.parse(date || ''), end = Date.parse(range?.[2] || '');
     const days = Number.isFinite(start) ? Math.max(0, Math.floor((Date.now()-start)/86400000)) : null;
     const reuse = Number(s.match(/(\d+) ads use this creative and text/i)?.[1] || 1);
     const low = /Low impression count|Impressions:\s*<\s*100/i.test(s);
     const inactive = /\bInactive\b/i.test(s);
-    return {start,days,reuse,low,inactive};
+    return {start,end,days,reuse,low,inactive};
   }
   function readAudience() {
     for(const table of document.querySelectorAll('table,[role=table]')) {
@@ -74,10 +76,10 @@
   }
   function render(r) {
     const f=r.facts, a=audience.get(r.id);
-    const days=Number.isFinite(f.start)?Math.max(0,Math.floor((Date.now()-f.start)/DAY)):null;
+    const days=Number.isFinite(f.start)?Math.max(0,Math.floor(((Number.isFinite(f.end)?f.end:Date.now())-f.start)/DAY)):null;
     const count=r.root.querySelector('.days');
     count.textContent=days===null?'':String(days);
-    count.title=f.inactive?'Inactive ad. Start date is not a measure of active run time.':`${days??'Unknown'} days since Meta’s start date. Longer running is a research signal, not proof of profitability.`;
+    count.title=f.inactive?(Number.isFinite(f.end)?`Inactive ad. Ran ${days} days between Meta’s start and end dates; it may not have run continuously.`:'Inactive ad. Start date is not a measure of active run time.'):`${days??'Unknown'} days since Meta’s start date. Longer running is a research signal, not proof of profitability.`;
     r.root.querySelector('.unit').textContent=f.inactive?'days · inactive':days===1?'day':'days';
     r.root.querySelector('.duration').title=count.title;
     const reuse=r.root.querySelector('.reuse');reuse.hidden=f.reuse<=1;
@@ -104,11 +106,50 @@
     r.root.querySelector('.audience').hidden=flags.hidden&&age.hidden&&gender.hidden;
     SuperChromeTheme.apply(r.host);
   }
+  function cardOf(r){
+    if(r.card?.isConnected && r.card.contains(r.host))return r.card;
+    let c=r.header;
+    while(c.parentElement && c.parentElement!==document.body && c.parentElement.querySelectorAll('[data-superchrome="ad-library"]').length<=1)c=c.parentElement;
+    return r.card=c;
+  }
+  function clearSort(){for(const node of document.querySelectorAll('[data-sc-order]')){node.style.removeProperty('order');node.removeAttribute('data-sc-order');}}
+  function applySort(){
+    const list=[...records.values()].filter(r=>r.host.isConnected);
+    if(!sortOldest || list.length<2){clearSort();return;}
+    const time=r=>Number.isFinite(r.facts.start)?r.facts.start:Infinity;
+    list.sort((a,b)=>time(a)-time(b));
+    const containers=new Set(list.map(r=>cardOf(r).parentElement).filter(c=>c && c!==document.body && c!==document.documentElement));
+    const set=(node,value)=>{if(node.style.getPropertyValue('order')!==value)node.style.setProperty('order',value);if(!node.hasAttribute('data-sc-order'))node.setAttribute('data-sc-order','');};
+    for(const c of containers)for(const child of c.children)set(child,'100000');
+    list.forEach((r,i)=>{const c=cardOf(r);if(containers.has(c.parentElement))set(c,String(i));});
+  }
+  function renderSortButton(){
+    const show=enabled && sortButton && !worker && records.size>1;
+    if(!show){sortHost?.remove();sortHost=null;return;}
+    if(!sortHost){
+      sortHost=document.createElement('div');sortHost.dataset.superchrome='ad-library-sort';
+      const root=sortHost.attachShadow({mode:'open'});
+      root.innerHTML=`<style>
+      :host{all:initial;position:fixed!important;right:20px;bottom:20px;z-index:2147483000;font:600 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--on-fg:#136a39;--on-bg:#dcf3e5}
+      :host([data-superchrome-theme=dark]){--on-fg:#a3f0c4;--on-bg:#173a2a}
+      button{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px 0 13px;border-radius:999px;cursor:pointer;font:inherit;color:var(--sc-text);background:var(--sc-surface);border:1px solid var(--sc-border);box-shadow:0 6px 20px rgba(0,0,0,.18)}
+      button:hover{border-color:var(--sc-accent)}button:focus-visible{outline:2px solid var(--sc-accent);outline-offset:3px}
+      button[aria-pressed=true]{color:var(--on-fg);background:var(--on-bg);border-color:var(--on-fg)}
+      svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      </style><button type="button" aria-pressed="false" title="Reorder the ads loaded on this page from oldest start date to newest. Click again for Meta’s order."><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span>Oldest first</span></button>`;
+      root.querySelector('button').onclick=()=>{sortOldest=!sortOldest;chrome.storage.local.set({adLibrarySortOldest:sortOldest}).catch(()=>{});applySort();renderSortButton();};
+      document.body.append(sortHost);
+    }
+    const b=sortHost.shadowRoot.querySelector('button');
+    b.setAttribute('aria-pressed',String(sortOldest));
+    b.querySelector('span').textContent=sortOldest?'Oldest first ✓':'Oldest first';
+    SuperChromeTheme.apply(sortHost);
+  }
   function scan() {
     pending=null;
     if(!identityReady)return;
     if(!enabled || !location.pathname.startsWith('/ads/library')) {
-      stopLookup();for(const r of records.values()) restore(r); records.clear(); return;
+      stopLookup();for(const r of records.values()) restore(r); records.clear(); clearSort(); renderSortButton(); return;
     }
     readAudience();
     if(worker){
@@ -171,15 +212,17 @@
       hidden.forEach(([node])=>node.style.setProperty('display','none','important'));
     }
     for(const r of records.values()) render(r);
+    applySort();
+    renderSortButton();
     loadAudience();
   }
   function schedule(){if(!pending)pending=setTimeout(scan,150);}
   new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
-  chrome.storage.local.get({adLibraryEnabled:true,[CACHE_KEY]:{}}).then(s=>{
-    enabled=s.adLibraryEnabled!==false;cache=s[CACHE_KEY]||{};
+  chrome.storage.local.get({adLibraryEnabled:true,adLibrarySortButton:true,adLibrarySortOldest:false,[CACHE_KEY]:{}}).then(s=>{
+    enabled=s.adLibraryEnabled!==false;sortButton=s.adLibrarySortButton!==false;sortOldest=s.adLibrarySortOldest===true;cache=s[CACHE_KEY]||{};
     for(const [id,entry]of Object.entries(cache))if(entry?.value && Date.now()-entry.at<TTL)audience.set(id,entry.value);
     ready=true;schedule();
   }).catch(()=>{ready=true;schedule();});
-  chrome.storage.onChanged.addListener((c,area)=>{if(area==='local'&&c.adLibraryEnabled){enabled=c.adLibraryEnabled.newValue!==false;schedule();}});
+  chrome.storage.onChanged.addListener((c,area)=>{if(area!=='local')return;if(c.adLibraryEnabled)enabled=c.adLibraryEnabled.newValue!==false;if(c.adLibrarySortButton){sortButton=c.adLibrarySortButton.newValue!==false;if(!sortButton){sortOldest=false;chrome.storage.local.set({adLibrarySortOldest:false}).catch(()=>{});}}if(c.adLibrarySortOldest)sortOldest=c.adLibrarySortOldest.newValue===true;if(c.adLibraryEnabled||c.adLibrarySortButton||c.adLibrarySortOldest)schedule();});
   setInterval(schedule,3000);
 })();
