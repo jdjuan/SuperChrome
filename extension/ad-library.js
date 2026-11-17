@@ -83,8 +83,9 @@
     const reuse=r.root.querySelector('.reuse');reuse.hidden=f.reuse<=1;
     reuse.title=`${f.reuse} ads use this creative and text`;reuse.querySelector('span').textContent='×'+f.reuse;
     r.root.querySelector('.low').hidden=!f.low;
-    const tier=f.inactive||days===null?'off':days>=180?'fire':days>=90?'hot':days>=30?'warm':'new';
+    const tier=days>=180?'fire':days>=90?'hot':days>=30?'warm':'new';
     r.root.querySelector('.duration').dataset.tier=tier;
+    r.root.querySelector('.duration').dataset.inactive=String(!!f.inactive);
     r.root.querySelector('.duration').hidden=days===null;
     const [flags,age,gender]=r.root.querySelectorAll('.fact');
     const list=a?.flags||[];
@@ -135,19 +136,19 @@
       host.dataset.superchrome='ad-library';
       const root=host.attachShadow({mode:'open'});
       root.innerHTML=`<style>
-      :host{display:block!important;padding:0 16px;margin:0 0 6px;font:13px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--sc-text);background:var(--sc-surface);
-        --t-new-fg:#3b4a66;--t-new-bg:#eef1f6;--t-warm-fg:#136a39;--t-warm-bg:#e1f4e8;--t-hot-fg:#874600;--t-hot-bg:#fff0d4;--t-fire-fg:#a1251a;--t-fire-bg:#ffe5df;--t-off-fg:#4f5b70;--t-off-bg:#eceef2;
+      :host{display:block!important;padding:0 16px;margin:0;font:13px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--sc-text);background:var(--sc-surface);
+        --t-new-fg:#a1251a;--t-new-bg:#ffe5df;--t-warm-fg:#874600;--t-warm-bg:#fff0d4;--t-hot-fg:#4a6600;--t-hot-bg:#eef7d4;--t-fire-fg:#136a39;--t-fire-bg:#dcf3e5;
         --reuse-fg:#136a39;--reuse-bg:#e1f4e8;--low-fg:#874600;--low-bg:#fff0d4;--chip-bg:#f2f4f8;--chip-border:#dfe4ec;--f:#b0215f;--m:#1d5cbd}
-      :host([data-superchrome-theme=dark]){--t-new-fg:#d6def0;--t-new-bg:#2b3753;--t-warm-fg:#a3f0c4;--t-warm-bg:#173a2a;--t-hot-fg:#ffd68c;--t-hot-bg:#3e2d0e;--t-fire-fg:#ffb6aa;--t-fire-bg:#47211c;--t-off-fg:#c3cbda;--t-off-bg:#2c3343;
+      :host([data-superchrome-theme=dark]){--t-new-fg:#ffb6aa;--t-new-bg:#47211c;--t-warm-fg:#ffd68c;--t-warm-bg:#3e2d0e;--t-hot-fg:#d6f28f;--t-hot-bg:#2e3911;--t-fire-fg:#a3f0c4;--t-fire-bg:#173a2a;
         --reuse-fg:#a3f0c4;--reuse-bg:#173a2a;--low-fg:#ffd68c;--low-bg:#3e2d0e;--chip-bg:#253150;--chip-border:#3a4767;--f:#ffa3cf;--m:#a5c8ff}
       *{box-sizing:border-box}[hidden]{display:none!important}
-      .row{display:flex;align-items:center;gap:8px;min-height:56px;color:var(--sc-text);background:var(--sc-surface)}
+      .row{display:flex;align-items:center;gap:8px;padding:10px 0 2px;color:var(--sc-text);background:var(--sc-surface)}
       .pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:650;white-space:nowrap}
       svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
       .duration{height:34px;padding:0 12px 0 10px;gap:6px;color:var(--t-new-fg);background:var(--t-new-bg)}
       .duration[data-tier=warm]{color:var(--t-warm-fg);background:var(--t-warm-bg)}.duration[data-tier=hot]{color:var(--t-hot-fg);background:var(--t-hot-bg)}
-      .duration[data-tier=fire]{color:var(--t-fire-fg);background:var(--t-fire-bg)}.duration[data-tier=off]{color:var(--t-off-fg);background:var(--t-off-bg)}
-      .duration svg{width:17px;height:17px}.duration .ic{display:none}.duration[data-tier=new] .i-new,.duration[data-tier=warm] .i-warm,.duration[data-tier=hot] .i-hot,.duration[data-tier=fire] .i-hot,.duration[data-tier=off] .i-off{display:block}
+      .duration[data-tier=fire]{color:var(--t-fire-fg);background:var(--t-fire-bg)}
+      .duration svg{width:17px;height:17px}.duration .ic{display:none}.duration[data-tier=new] .i-new,.duration[data-tier=warm] .i-warm,.duration[data-tier=hot] .i-hot,.duration[data-tier=fire] .i-hot{display:block}.duration[data-inactive=true] .ic{display:none!important}.duration[data-inactive=true] .i-off{display:block!important}
       .duration[data-tier=fire] .i-hot{fill:currentColor;fill-opacity:.25}
       .days{font-size:20px;font-weight:780;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.unit{font-size:11px;font-weight:600}
       .reuse{color:var(--reuse-fg);background:var(--reuse-bg)}.low{color:var(--low-fg);background:var(--low-bg)}
