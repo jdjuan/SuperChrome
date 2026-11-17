@@ -87,7 +87,7 @@
     if(r.key===key){SuperChromeTheme.apply(r.host);return;}
     r.key=key;
     const days=daysOf(f);
-    const win=r.root.querySelector('.winner');win.hidden=!isWinner(f);
+    const win=r.root.querySelector('.winner');win.hidden=!isWinner(f);r.host.toggleAttribute('data-winner',!win.hidden);
     const count=r.root.querySelector('.days');
     count.textContent=days===null?'':String(days);
     count.title=f.inactive?(Number.isFinite(f.end)?`Inactive ad. Ran ${days} days between Meta’s start and end dates; it may not have run continuously.`:'Inactive ad. Start date is not a measure of active run time.'):`${days??'Unknown'} days since Meta’s start date. Longer running is a research signal, not proof of profitability.`;
@@ -144,11 +144,10 @@
     for(const node of document.querySelectorAll('[data-sc-winner]'))node.removeAttribute('data-sc-winner');
   }
   function winnerStyle(){
-    if(document.getElementById('sc-ad-winner-style-v3'))return;
-    const style=document.createElement('style');style.id='sc-ad-winner-style-v3';
-    // Box shadows only: positioning the card would lift it above Meta's sticky header.
-    style.textContent=`[data-sc-winner]{align-self:start!important;border-radius:12px!important;box-shadow:0 0 0 2px #d4a72c,0 0 0 6px rgba(212,167,44,.14),0 22px 44px -22px rgba(120,84,0,.55)!important;transition:box-shadow .25s}
-    [data-sc-winner]:hover{box-shadow:0 0 0 2px #c79a1e,0 0 0 7px rgba(212,167,44,.2),0 26px 50px -22px rgba(120,84,0,.65)!important}`;
+    if(document.getElementById('sc-ad-winner-style-v4'))return;
+    const style=document.createElement('style');style.id='sc-ad-winner-style-v4';
+    // Box shadow only: positioning or re-bordering the card would disturb Meta's layout and sticky header.
+    style.textContent=`[data-sc-winner]{align-self:start!important;box-shadow:0 0 0 1px rgba(20,134,74,.45)!important}`;
     (document.head||document.documentElement).append(style);
   }
   function applyView(){
@@ -215,7 +214,7 @@
     select{appearance:none;font-weight:600;font-size:13px;font-family:inherit;color:var(--sc-text);background:var(--sc-button) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/12px;border:1px solid var(--sc-border);border-radius:9px;height:32px;padding:0 28px 0 10px;cursor:pointer}
     .check{height:32px;padding:0 11px;border:1px solid var(--sc-border);border-radius:9px;background:var(--sc-button);color:var(--sc-text);cursor:pointer}
     .check input{margin:0;accent-color:var(--sc-accent);width:15px;height:15px}
-    .win svg{fill:#d4a72c}.win:has(input:checked){color:#fff;background:#16181d;border-color:#d4a72c}.win:has(input:checked) input{accent-color:#d4a72c}.win:has(input:checked) svg{fill:#f2c94c}
+    .win svg{fill:#127a43}.win:has(input:checked){color:#fff;background:#127a43;border-color:#127a43}.win:has(input:checked) input{accent-color:#fff}.win:has(input:checked) svg{fill:#fff}
     .fresh{height:32px;padding:0 12px;border:1px solid var(--sc-accent);border-radius:9px;background:transparent;color:var(--sc-accent);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}.memory{white-space:nowrap}
     .win svg{width:14px;height:14px}
     .load{margin-left:auto;height:34px;padding:0 16px;border:0;border-radius:10px;font-weight:700;font-size:13px;font-family:inherit;color:var(--sc-surface);background:var(--sc-accent);cursor:pointer}
@@ -341,7 +340,8 @@
       .duration svg{width:17px;height:17px}.duration .ic{display:none}.duration[data-tier=new] .i-new,.duration[data-tier=warm] .i-warm,.duration[data-tier=hot] .i-hot,.duration[data-tier=fire] .i-hot{display:block}.duration[data-inactive=true] .ic{display:none!important}.duration[data-inactive=true] .i-off{display:block!important}
       .duration[data-tier=fire] .i-hot{fill:currentColor;fill-opacity:.25}
       .days{font-size:20px;font-weight:780;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.unit{font-size:11px;font-weight:600}
-      .winner{color:#fff;background:#16181d;border:1px solid #d4a72c;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:0 10px 0 8px}.winner svg{fill:#f2c94c;stroke:none;width:14px;height:14px}
+      .winner{color:#fff;background:#127a43;font-size:12px;font-weight:750;letter-spacing:.2px;padding:0 11px 0 9px}.winner svg{fill:currentColor;stroke:none;width:13px;height:13px}
+      :host([data-winner]){background:#e9f8ef!important;border-radius:8px 8px 0 0}:host([data-winner]) .row{background:#e9f8ef}:host([data-winner][data-superchrome-theme=dark]),:host([data-winner][data-superchrome-theme=dark]) .row{background:#173a2a!important}:host([data-winner][data-superchrome-theme=dark]) .winner{color:#0d2a1b;background:#7fdca6}
       .reuse{color:var(--reuse-fg);background:var(--reuse-bg)}.low{color:var(--low-fg);background:var(--low-bg)}
       .audience{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
       .fact{height:28px;padding:0 9px;border:1px solid var(--chip-border);background:var(--chip-bg);color:var(--sc-text);overflow:hidden;text-overflow:ellipsis}
