@@ -1,6 +1,6 @@
 (() => {
   const status = document.querySelector('#ad-library-status');
-  for (const [id, key] of [['#ad-library-enabled','adLibraryEnabled'],['#ad-library-sort-button','adLibrarySortButton']]) {
+  for (const [id, key] of [['#ad-library-enabled','adLibraryEnabled'],['#ad-library-filter-bar','adLibraryFilterBar']]) {
     const toggle = document.querySelector(id);
     let revision = 0;
     chrome.storage.onChanged.addListener((changes, area) => {

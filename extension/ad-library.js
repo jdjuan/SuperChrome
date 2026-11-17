@@ -1,7 +1,7 @@
 (() => {
   if (globalThis.__scAds) return;
   globalThis.__scAds = true;
-  let enabled = true, sortButton = true, sortOldest = false, sortHost = null, pending, ready=false, activeLookup=null, saveTimer;
+  let resultsText=null, resultsAt=0, enabled = true, filterBar = true, view = {sort:'meta',min:0,format:'all',active:false,winners:false}, bar = null, loading = null, pending, ready=false, activeLookup=null, saveTimer;
   const DAY=86400000, TTL=21*DAY, CACHE_KEY='adLibraryAudienceV2';
   let cache={};
   let workerId=null, worker=false, workerAuthorized=false, identityReady=false;
@@ -74,9 +74,13 @@
     r.host.remove();
     for(const [node,value,priority] of r.hidden) { if(value) node.style.setProperty('display',value,priority); else node.style.removeProperty('display'); }
   }
+  const daysOf=f=>Number.isFinite(f.start)?Math.max(0,Math.floor(((Number.isFinite(f.end)?f.end:Date.now())-f.start)/DAY)):null;
+  // A winner is still active, is not low reach and has run long enough to suggest it pays for itself.
+  const isWinner=f=>{const d=daysOf(f);return !f.inactive && !f.low && d!==null && (d>=180 || (d>=90 && f.reuse>=2));};
   function render(r) {
     const f=r.facts, a=audience.get(r.id);
-    const days=Number.isFinite(f.start)?Math.max(0,Math.floor(((Number.isFinite(f.end)?f.end:Date.now())-f.start)/DAY)):null;
+    const days=daysOf(f);
+    const win=r.root.querySelector('.winner');win.hidden=!isWinner(f);
     const count=r.root.querySelector('.days');
     count.textContent=days===null?'':String(days);
     count.title=f.inactive?(Number.isFinite(f.end)?`Inactive ad. Ran ${days} days between Meta’s start and end dates; it may not have run continuously.`:'Inactive ad. Start date is not a measure of active run time.'):`${days??'Unknown'} days since Meta’s start date. Longer running is a research signal, not proof of profitability.`;
@@ -112,44 +116,151 @@
     while(c.parentElement && c.parentElement!==document.body && c.parentElement.querySelectorAll('[data-superchrome="ad-library"]').length<=1)c=c.parentElement;
     return r.card=c;
   }
-  function clearSort(){for(const node of document.querySelectorAll('[data-sc-order]')){node.style.removeProperty('order');node.removeAttribute('data-sc-order');}}
-  function applySort(){
-    const list=[...records.values()].filter(r=>r.host.isConnected);
-    if(!sortOldest || list.length<2){clearSort();return;}
-    const time=r=>Number.isFinite(r.facts.start)?r.facts.start:Infinity;
-    list.sort((a,b)=>time(a)-time(b));
-    const containers=new Set(list.map(r=>cardOf(r).parentElement).filter(c=>c && c!==document.body && c!==document.documentElement));
-    const set=(node,value)=>{if(node.style.getPropertyValue('order')!==value)node.style.setProperty('order',value);if(!node.hasAttribute('data-sc-order'))node.setAttribute('data-sc-order','');};
-    for(const c of containers)for(const child of c.children)set(child,'100000');
-    list.forEach((r,i)=>{const c=cardOf(r);if(containers.has(c.parentElement))set(c,String(i));});
+  function formatOf(r){
+    const c=cardOf(r);
+    if(c.querySelector('video'))return 'video';
+    const images=c.querySelectorAll('img').length-1; // the first image is the advertiser avatar
+    return images>=2?'carousel':images===1?'image':'unknown';
   }
-  function renderSortButton(){
-    const show=enabled && sortButton && !worker && records.size>1;
-    if(!show){sortHost?.remove();sortHost=null;return;}
-    if(!sortHost){
-      sortHost=document.createElement('div');sortHost.dataset.superchrome='ad-library-sort';
-      const root=sortHost.attachShadow({mode:'open'});
-      root.innerHTML=`<style>
-      :host{all:initial;position:fixed!important;right:20px;bottom:20px;z-index:2147483000;font:600 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--on-fg:#136a39;--on-bg:#dcf3e5}
-      :host([data-superchrome-theme=dark]){--on-fg:#a3f0c4;--on-bg:#173a2a}
-      button{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px 0 13px;border-radius:999px;cursor:pointer;font:inherit;color:var(--sc-text);background:var(--sc-surface);border:1px solid var(--sc-border);box-shadow:0 6px 20px rgba(0,0,0,.18)}
-      button:hover{border-color:var(--sc-accent)}button:focus-visible{outline:2px solid var(--sc-accent);outline-offset:3px}
-      button[aria-pressed=true]{color:var(--on-fg);background:var(--on-bg);border-color:var(--on-fg)}
-      svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-      </style><button type="button" aria-pressed="false" title="Reorder the ads loaded on this page from oldest start date to newest. Click again for Meta’s order."><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span>Oldest first</span></button>`;
-      root.querySelector('button').onclick=()=>{sortOldest=!sortOldest;chrome.storage.local.set({adLibrarySortOldest:sortOldest}).catch(()=>{});applySort();renderSortButton();};
-      document.body.append(sortHost);
+  const filtering=()=>view.min>0||view.format!=='all'||view.active||view.winners;
+  function matches(r){
+    const f=r.facts,d=daysOf(f);
+    if(view.min>0 && (d===null || d<view.min))return false;
+    if(view.active && f.inactive)return false;
+    if(view.winners && !isWinner(f))return false;
+    if(view.format!=='all' && formatOf(r)!==view.format)return false;
+    return true;
+  }
+  function clearView(){
+    for(const node of document.querySelectorAll('[data-sc-order]')){node.style.removeProperty('order');node.removeAttribute('data-sc-order');}
+    for(const node of document.querySelectorAll('[data-sc-filtered]')){node.style.removeProperty('display');node.removeAttribute('data-sc-filtered');}
+    for(const node of document.querySelectorAll('[data-sc-winner]'))node.removeAttribute('data-sc-winner');
+  }
+  function winnerStyle(){
+    if(document.getElementById('sc-ad-winner-style-v2'))return;
+    const style=document.createElement('style');style.id='sc-ad-winner-style-v2';
+    // Box shadows only: positioning the card would lift it above Meta's sticky header.
+    style.textContent=`[data-sc-winner]{align-self:start!important;border-radius:12px!important;animation:sc-winner-glow 3.2s ease-in-out infinite}
+    @keyframes sc-winner-glow{0%,100%{box-shadow:0 0 0 3px #ffc53d,0 0 0 6px rgba(255,197,61,.25),0 14px 34px -6px rgba(255,165,0,.6)}50%{box-shadow:0 0 0 3px #2fbf71,0 0 0 6px rgba(47,191,113,.25),0 14px 38px -6px rgba(47,191,113,.6)}}
+    @media (prefers-reduced-motion:reduce){[data-sc-winner]{animation:none;box-shadow:0 0 0 3px #ffc53d,0 0 0 6px rgba(47,191,113,.3),0 14px 34px -6px rgba(255,165,0,.55)}}`;
+    (document.head||document.documentElement).append(style);
+  }
+  function applyView(){
+    const list=[...records.values()].filter(r=>r.host.isConnected);
+    const containers=new Set(list.map(r=>cardOf(r).parentElement).filter(c=>c && c!==document.body && c!==document.documentElement && list.length>1));
+    const mark=(node,attr,prop,value)=>{if(node.style.getPropertyValue(prop)!==value)node.style.setProperty(prop,value,prop==='display'?'important':'');if(!node.hasAttribute(attr))node.setAttribute(attr,'');};
+    const unmark=(node,attr,prop)=>{if(node.hasAttribute(attr)){node.style.removeProperty(prop);node.removeAttribute(attr);}};
+    winnerStyle();
+    const shown=[];
+    for(const r of list){
+      const c=cardOf(r);
+      if(isWinner(r.facts))c.setAttribute('data-sc-winner','');else c.removeAttribute('data-sc-winner');
+      if(!containers.has(c.parentElement))continue;
+      if(matches(r)){unmark(c,'data-sc-filtered','display');shown.push(r);}else mark(c,'data-sc-filtered','display','none');
     }
-    const b=sortHost.shadowRoot.querySelector('button');
-    b.setAttribute('aria-pressed',String(sortOldest));
-    b.querySelector('span').textContent=sortOldest?'Oldest first ✓':'Oldest first';
-    SuperChromeTheme.apply(sortHost);
+    const owned=new Set(list.map(cardOf));
+    for(const c of containers)for(const child of c.children){
+      if(owned.has(child))continue;
+      if(filtering())mark(child,'data-sc-filtered','display','none');else unmark(child,'data-sc-filtered','display');
+      if(view.sort!=='meta')mark(child,'data-sc-order','order','100000');else unmark(child,'data-sc-order','order');
+    }
+    if(view.sort==='meta')for(const r of list)unmark(cardOf(r),'data-sc-order','order');
+    else{
+      const time=r=>Number.isFinite(r.facts.start)?r.facts.start:Infinity;
+      const run=r=>daysOf(r.facts)??-1;
+      const sorted=list.slice().sort(view.sort==='reuse'?(a,b)=>b.facts.reuse-a.facts.reuse||run(b)-run(a):(a,b)=>run(b)-run(a)||time(a)-time(b));
+      sorted.forEach((r,i)=>mark(cardOf(r),'data-sc-order','order',String(i)));
+    }
+    renderBar(list,shown,containers);
+  }
+  function stickyTop(){
+    // Meta stacks a fixed nav and a sticky search/filter header; sit below every layer.
+    if(!document.elementsFromPoint)return 0;
+    const x=Math.max(8,(bar?.getBoundingClientRect().left||0)+12);
+    let top=0;
+    for(let i=0;i<5;i++){
+      let next=top;
+      for(const el of document.elementsFromPoint(x,top+1)){
+        if(bar && (el===bar || bar.contains(el)))continue;
+        for(let n=el;n && n!==document.body && n!==document.documentElement;n=n.parentElement){
+          const pos=getComputedStyle(n).position;
+          if(pos==='fixed'||pos==='sticky'){const rect=n.getBoundingClientRect();if(rect.top<=top+1 && rect.bottom>next)next=rect.bottom;break;}
+        }
+      }
+      if(next<=top)break;top=next;
+    }
+    return Math.round(Math.min(top,280));
+  }
+  function buildBar(){
+    const host=document.createElement('div');host.dataset.superchrome='ad-library-bar';
+    const root=host.attachShadow({mode:'open'});
+    const opts=(k,list)=>`<select data-k="${k}">${list.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select>`;
+    root.innerHTML=`<style>
+    :host{display:block!important;position:sticky!important;top:var(--sc-top,0px);z-index:20;margin:0 0 16px;font:13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}[hidden]{display:none!important}
+    .bar{color:var(--sc-text);background:var(--sc-surface);border:1px solid var(--sc-border);border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px -14px rgba(0,0,0,.45)}
+    .controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+    .brand{display:inline-flex;align-items:center;gap:7px;font-weight:750;font-size:14px}.brand svg{width:20px;height:20px}
+    label{display:inline-flex;align-items:center;gap:6px;color:var(--sc-muted);font-weight:550}
+    select{appearance:none;font-weight:600;font-size:13px;font-family:inherit;color:var(--sc-text);background:var(--sc-button) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/12px;border:1px solid var(--sc-border);border-radius:9px;height:32px;padding:0 28px 0 10px;cursor:pointer}
+    .check{height:32px;padding:0 11px;border:1px solid var(--sc-border);border-radius:9px;background:var(--sc-button);color:var(--sc-text);cursor:pointer}
+    .check input{margin:0;accent-color:var(--sc-accent);width:15px;height:15px}
+    .win:has(input:checked){color:#4a2c00;background:linear-gradient(135deg,#ffe58a,#ffc53d 55%,#9fe3b8);border-color:#e0a800}
+    .win svg{width:14px;height:14px;fill:currentColor}
+    .load{margin-left:auto;height:34px;padding:0 16px;border:0;border-radius:10px;font-weight:700;font-size:13px;font-family:inherit;color:var(--sc-surface);background:var(--sc-accent);cursor:pointer}
+    .load[aria-pressed=true]{color:var(--sc-text);background:var(--sc-button);border:1px solid var(--sc-border)}
+    select:focus-visible,.check:has(input:focus-visible),.load:focus-visible{outline:2px solid var(--sc-accent);outline-offset:2px}
+    .stats{margin-top:8px;color:var(--sc-muted);font-size:12px}.stats b{color:var(--sc-text)}
+    @media(max-width:700px){.load{margin-left:0}}
+    </style><div class="bar" role="toolbar" aria-label="SuperChrome ad filters"><div class="controls">
+    <span class="brand"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffb020"/><path d="M12 5.5l2 4.2 4.6.6-3.4 3.2.9 4.5-4.1-2.2-4.1 2.2.9-4.5-3.4-3.2 4.6-.6z" fill="#fff"/></svg>SuperChrome</span>
+    <label>Sort ${opts('sort',[['meta','Meta order'],['longest','Longest running'],['reuse','Most reused']])}</label>
+    <label>Running ${opts('min',[['0','Any'],['7','7+ days'],['30','30+ days'],['90','90+ days'],['180','180+ days']])}</label>
+    <label>Format ${opts('format',[['all','All'],['video','Video'],['image','Image'],['carousel','Carousel']])}</label>
+    <label class="check"><input type="checkbox" data-k="active">Active only</label>
+    <label class="check win"><input type="checkbox" data-k="winners"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>Winners only</label>
+    <button class="load" type="button" aria-pressed="false">Load all results</button>
+    </div><div class="stats" role="status"></div></div>`;
+    for(const el of root.querySelectorAll('[data-k]'))el.addEventListener('change',()=>{
+      const k=el.dataset.k;view={...view,[k]:el.type==='checkbox'?el.checked:k==='min'?Number(el.value):el.value};
+      chrome.storage.local.set({adLibraryView:view}).catch(()=>{});applyView();
+    });
+    root.querySelector('.load').onclick=()=>loading?stopLoading():loadAll();
+    return host;
+  }
+  function stopLoading(){if(loading){loading.stop=true;}}
+  async function loadAll(){
+    const task=loading={stop:false};const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    let last=-1,still=0;
+    while(!task.stop && still<5 && records.size<2000 && enabled){
+      scrollTo(0,document.documentElement.scrollHeight);await wait(1300);scan();
+      if(records.size===last)still++;else{still=0;last=records.size;}
+    }
+    loading=null;applyView();bar?.scrollIntoView({block:'start'});
+  }
+  function renderBar(list,shown,containers){
+    const show=enabled && filterBar && !worker && list.length>1 && containers.size>0;
+    if(!show){bar?.remove();bar=null;return;}
+    const grid=[...containers][0];
+    if(!bar)bar=buildBar();
+    if(bar.nextElementSibling!==grid)grid.parentElement.insertBefore(bar,grid);
+    const root=bar.shadowRoot;
+    for(const el of root.querySelectorAll('[data-k]')){const v=view[el.dataset.k];if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);}
+    bar.style.setProperty('--sc-top',stickyTop()+'px');
+    const days=shown.map(r=>daysOf(r.facts)).filter(d=>d!==null).sort((a,b)=>a-b);
+    const median=days.length?days[Math.floor((days.length-1)/2)]:null,min=view.min||30;
+    if(Date.now()-resultsAt>3000){resultsAt=Date.now();const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);resultsText=null;for(let n;(n=w.nextNode());){const m=n.data.match(/^\s*[~>]?\s?[\d.,]+K?\s+results?\s*$/);if(m){resultsText=m[0].trim();break;}}}
+    const total=resultsText;
+    const winners=shown.filter(r=>isWinner(r.facts)).length;
+    root.querySelector('.stats').innerHTML=`Showing <b>${shown.length}</b> of ${list.length} loaded ads${total?` (${total.replace(/\s+/g,' ').trim()})`:''}${median!==null?` · median <b>${median} days</b> running`:''} · <b>${days.filter(d=>d>=min).length}</b> at ${min}+ days · <b>${winners}</b> ${winners===1?'winner':'winners'}`;
+    const load=root.querySelector('.load');load.setAttribute('aria-pressed',String(!!loading));load.textContent=loading?`Loading… ${list.length} ads · Stop`:'Load all results';
+    SuperChromeTheme.apply(bar);
   }
   function scan() {
     pending=null;
     if(!identityReady)return;
     if(!enabled || !location.pathname.startsWith('/ads/library')) {
-      stopLookup();for(const r of records.values()) restore(r); records.clear(); clearSort(); renderSortButton(); return;
+      stopLookup();stopLoading();for(const r of records.values()) restore(r); records.clear(); clearView(); bar?.remove(); bar=null; return;
     }
     readAudience();
     if(worker){
@@ -192,6 +303,7 @@
       .duration svg{width:17px;height:17px}.duration .ic{display:none}.duration[data-tier=new] .i-new,.duration[data-tier=warm] .i-warm,.duration[data-tier=hot] .i-hot,.duration[data-tier=fire] .i-hot{display:block}.duration[data-inactive=true] .ic{display:none!important}.duration[data-inactive=true] .i-off{display:block!important}
       .duration[data-tier=fire] .i-hot{fill:currentColor;fill-opacity:.25}
       .days{font-size:20px;font-weight:780;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.unit{font-size:11px;font-weight:600}
+      .winner{color:#4a2c00;background:linear-gradient(135deg,#ffe58a,#ffc53d 55%,#9fe3b8);box-shadow:0 2px 10px -2px rgba(255,170,0,.6);letter-spacing:.2px}.winner svg{fill:currentColor;stroke:none}
       .reuse{color:var(--reuse-fg);background:var(--reuse-bg)}.low{color:var(--low-fg);background:var(--low-bg)}
       .audience{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
       .fact{height:28px;padding:0 9px;border:1px solid var(--chip-border);background:var(--chip-bg);color:var(--sc-text);overflow:hidden;text-overflow:ellipsis}
@@ -201,7 +313,7 @@
       button svg{width:16px;height:16px;transition:transform .15s}button[aria-expanded=true] svg{transform:rotate(180deg)}
       button:hover{background:var(--sc-button);color:var(--sc-text)}button:focus-visible,.pill:focus-visible{outline:2px solid var(--sc-accent);outline-offset:2px}
       @media(max-width:600px){:host{padding:0 10px}.row{gap:6px;flex-wrap:wrap;padding:6px 0}.audience{gap:4px}}
-      </style><div class="row"><span class="pill duration" tabindex="0"><svg class="ic i-new" viewBox="0 0 24 24"><path d="M12 21v-8m0 0C12 8 8.5 6 4 6c0 4.5 3 7 8 7zm0 0c0-3.5 3-6 8-6 0 4-3.5 6-8 6z"/></svg><svg class="ic i-warm" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8m0 0h-5m5 0v5"/></svg><svg class="ic i-hot" viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-7 0-4.5-4-7-5-11-2 2-3 4-3 6-1-1-2-2-2.5-3C6 9 5 11.5 5 15c0 4.2 3 7 7 7z"/></svg><svg class="ic i-off" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6m4-6v6"/></svg><span class="days"></span><span class="unit">days</span></span><span class="pill reuse" hidden tabindex="0"><svg viewBox="0 0 24 24" aria-label="Creative reused"><path d="M4 8h13l-3-3m6 11H7l3 3M4 8v5m16 3v-5"/></svg><span></span></span><span class="pill low" hidden tabindex="0" title="Low impressions: Meta reports fewer than 100 impressions"><svg viewBox="0 0 24 24" aria-label="Low impressions"><path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20 20 4"/></svg>Low reach</span><div class="audience" hidden><span class="pill fact flags" hidden></span><span class="pill fact age" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span></span></span><span class="pill fact gender" hidden><span class="f">♀</span><span class="m">♂</span></span></div><button aria-label="Expand ad details" aria-expanded="false" title="Show original Meta details"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`;
+      </style><div class="row"><span class="pill duration" tabindex="0"><svg class="ic i-new" viewBox="0 0 24 24"><path d="M12 21v-8m0 0C12 8 8.5 6 4 6c0 4.5 3 7 8 7zm0 0c0-3.5 3-6 8-6 0 4-3.5 6-8 6z"/></svg><svg class="ic i-warm" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8m0 0h-5m5 0v5"/></svg><svg class="ic i-hot" viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-7 0-4.5-4-7-5-11-2 2-3 4-3 6-1-1-2-2-2.5-3C6 9 5 11.5 5 15c0 4.2 3 7 7 7z"/></svg><svg class="ic i-off" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6m4-6v6"/></svg><span class="days"></span><span class="unit">days</span></span><span class="pill winner" hidden tabindex="0" title="Winner: still active, not low reach, and running 180+ days (or 90+ days with reused creative). A research signal, not proof of profit."><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>Winner</span><span class="pill reuse" hidden tabindex="0"><svg viewBox="0 0 24 24" aria-label="Creative reused"><path d="M4 8h13l-3-3m6 11H7l3 3M4 8v5m16 3v-5"/></svg><span></span></span><span class="pill low" hidden tabindex="0" title="Low impressions: Meta reports fewer than 100 impressions"><svg viewBox="0 0 24 24" aria-label="Low impressions"><path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20 20 4"/></svg>Low reach</span><div class="audience" hidden><span class="pill fact flags" hidden></span><span class="pill fact age" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span></span></span><span class="pill fact gender" hidden><span class="f">♀</span><span class="m">♂</span></span></div><button aria-label="Expand ad details" aria-expanded="false" title="Show original Meta details"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`;
       const nodes=[];
       for(let node=button;node && node!==header;node=node.parentElement){nodes.push(node);for(let prev=node.previousElementSibling;prev;prev=prev.previousElementSibling)nodes.push(prev);if(node.parentElement===header)break;nodes.pop();}
       const hidden=[...new Set(nodes)].map(node=>[node,node.style.getPropertyValue('display'),node.style.getPropertyPriority('display')]);
@@ -212,17 +324,18 @@
       hidden.forEach(([node])=>node.style.setProperty('display','none','important'));
     }
     for(const r of records.values()) render(r);
-    applySort();
-    renderSortButton();
+    applyView();
     loadAudience();
   }
   function schedule(){if(!pending)pending=setTimeout(scan,150);}
   new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
-  chrome.storage.local.get({adLibraryEnabled:true,adLibrarySortButton:true,adLibrarySortOldest:false,[CACHE_KEY]:{}}).then(s=>{
-    enabled=s.adLibraryEnabled!==false;sortButton=s.adLibrarySortButton!==false;sortOldest=s.adLibrarySortOldest===true;cache=s[CACHE_KEY]||{};
+  chrome.storage.local.get({adLibraryEnabled:true,adLibraryFilterBar:true,adLibraryView:null,adLibrarySortOldest:false,[CACHE_KEY]:{}}).then(s=>{
+    enabled=s.adLibraryEnabled!==false;filterBar=s.adLibraryFilterBar!==false;
+    if(s.adLibraryView && typeof s.adLibraryView==='object')view={...view,...s.adLibraryView};else if(s.adLibrarySortOldest===true)view.sort='longest';
+    if(!filterBar)view={sort:'meta',min:0,format:'all',active:false,winners:false};cache=s[CACHE_KEY]||{};
     for(const [id,entry]of Object.entries(cache))if(entry?.value && Date.now()-entry.at<TTL)audience.set(id,entry.value);
     ready=true;schedule();
   }).catch(()=>{ready=true;schedule();});
-  chrome.storage.onChanged.addListener((c,area)=>{if(area!=='local')return;if(c.adLibraryEnabled)enabled=c.adLibraryEnabled.newValue!==false;if(c.adLibrarySortButton){sortButton=c.adLibrarySortButton.newValue!==false;if(!sortButton){sortOldest=false;chrome.storage.local.set({adLibrarySortOldest:false}).catch(()=>{});}}if(c.adLibrarySortOldest)sortOldest=c.adLibrarySortOldest.newValue===true;if(c.adLibraryEnabled||c.adLibrarySortButton||c.adLibrarySortOldest)schedule();});
+  chrome.storage.onChanged.addListener((c,area)=>{if(area!=='local')return;if(c.adLibraryEnabled)enabled=c.adLibraryEnabled.newValue!==false;if(c.adLibraryFilterBar){filterBar=c.adLibraryFilterBar.newValue!==false;if(!filterBar){view={sort:'meta',min:0,format:'all',active:false,winners:false};chrome.storage.local.set({adLibraryView:view}).catch(()=>{});}}if(c.adLibraryEnabled||c.adLibraryFilterBar)schedule();});
   setInterval(schedule,3000);
 })();
