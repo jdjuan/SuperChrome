@@ -8,6 +8,8 @@
   host.dataset.superchrome = 'video-download';
   const shadow = host.attachShadow({mode: 'open'});
   // Colors are owned here so the button reads on any video, in light or dark mode.
+  const BADGE = `.g { display: grid; place-items: center; }
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
   const STYLE = `
     :host { all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
     button { all: initial; box-sizing: border-box; position: fixed; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #606060; border-radius: 50%; background: #202020; color: #fff; cursor: pointer; pointer-events: auto; font: 16px/1 system-ui; }
@@ -15,17 +17,21 @@
     button:hover, button:focus-visible { background: #383838; outline: 2px solid #fff; outline-offset: 2px; }
     button:disabled { cursor: wait; }
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
-    .status[hidden] { display: none; }`;
+    .status[hidden] { display: none; }
+    .g { display: grid; place-items: center; }
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
   // Inline mode sits in the site's own action row and takes its colors from the page, so it reads in light and dark.
   const INLINE_STYLE = `
     :host { display: inline-flex; align-items: center; flex: none; margin-left: 8px; }
-    button { all: initial; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: var(--yt-spec-text-primary, currentColor); background: var(--yt-spec-badge-chip-background, transparent); font: 16px/1 system-ui; }
-    :host(.x) button { width: 34px; height: 34px; background: transparent; color: rgb(113, 118, 123); }
+    button { all: initial; box-sizing: border-box; position: relative; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: #0f0f0f; background: rgba(0, 0, 0, .05); font: 16px/1 system-ui; }
+    :host([data-superchrome-theme="dark"]) button { color: #f1f1f1; background: rgba(255, 255, 255, .1); }
     :host(.x) { margin-left: 0; }
+    :host(.x) button { width: 34px; height: 34px; background: transparent; color: rgb(113, 118, 123); }
     button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    button:hover { background: var(--yt-spec-mono-tonal-hover, rgba(127, 127, 127, .22)); }
+    button:hover { background: rgba(127, 127, 127, .25); }
     button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
-    button:disabled { cursor: wait; opacity: .7; }`;
+    button:disabled { cursor: wait; opacity: .7; }
+    ${BADGE}`;
   shadow.innerHTML = `<style>${STYLE}</style>`;
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
   const entries = new Map();
@@ -76,7 +82,7 @@
     const {button, status} = entry;
     clearTimeout(entry.timer);
     button.disabled = !done;
-    if (done) button.textContent = job.ok ? '✓' : '!'; else button.textContent = '…';
+    entry.glyph.textContent = done ? (job.ok ? '✓' : '!') : '…';
     const raw = job.message || job.error || 'Downloading…';
     const percent = job.percent || raw.match(/\[download\]\s+(\d+(?:\.\d+)?%)/)?.[1];
     const message = done ? (job.ok ? 'Saved to Downloads' : `${raw}${job.needsHelper ? '' : ' Click to retry.'}`)
@@ -89,9 +95,9 @@
     if (done && job.ok) entry.timer = setTimeout(() => reset(entry), 6000);
   }
   function reset(entry) {
-    entry.button.innerHTML = ICON;
+    entry.glyph.innerHTML = ICON;
     entry.button.disabled = false;
-    entry.button.title = 'Download video';
+    entry.button.title = 'Download video · SuperChrome';
     entry.status.hidden = true;
   }
   async function save(entry) {
@@ -128,14 +134,22 @@
       if (!entry) {
         const button = document.createElement('button'), status = document.createElement('span');
         button.type = 'button';
-        button.innerHTML = ICON;
-        button.title = 'Download video';
+        const glyph = document.createElement('span');
+        glyph.className = 'g';
+        glyph.innerHTML = ICON;
+        button.append(glyph);
+        if (globalThis.SuperChromeBrandIcon) {
+          const badge = document.createElement('img');
+          badge.className = 'badge'; badge.alt = ''; badge.src = globalThis.SuperChromeBrandIcon;
+          button.append(badge);
+        }
+        button.title = 'Download video · SuperChrome';
         button.setAttribute('aria-label', 'Download video');
         status.className = 'status';
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
         status.hidden = true;
-        entry = {video, url, button, status, timer: 0, inline: null};
+        entry = {video, url, button, glyph, status, timer: 0, inline: null, themedAt: 0};
         button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); save(entry); });
         shadow.append(status);
         entries.set(video, entry);
@@ -150,6 +164,7 @@
         }
         if (entry.inline.parentElement !== anchor) anchor.append(entry.inline);
         if (entry.button.parentNode !== entry.inline.shadowRoot) entry.inline.shadowRoot.append(entry.button);
+        if (Date.now() - entry.themedAt > 1000) { entry.themedAt = Date.now(); globalThis.SuperChromeTheme?.apply(entry.inline); }
       } else {
         entry.inline?.remove();
         if (entry.button.parentNode !== shadow) shadow.append(entry.button);

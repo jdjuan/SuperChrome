@@ -8,11 +8,13 @@
   const host = document.createElement('div');
   host.dataset.superchrome = 'youtube-stats';
   const shadow = host.attachShadow({mode: 'open'});
-  // Text uses YouTube's own theme variables, so it follows the site's light/dark mode (not the OS).
+  // Colors are owned here and chosen from YouTube's actual background (not the OS theme), so the line stays readable in both modes.
   shadow.innerHTML = `<style>
     :host { display: block; margin: 2px 0 6px; }
-    .line { font: 400 14px/20px Roboto, Arial, sans-serif; color: var(--yt-spec-text-secondary, #606060); }
-    b { font-weight: 500; color: var(--yt-spec-text-primary, #0f0f0f); }
+    .line { font: 400 14px/20px Roboto, Arial, sans-serif; color: #606060; }
+    b { font-weight: 500; color: #0f0f0f; }
+    :host([data-superchrome-theme="dark"]) .line { color: #b8b8b8; }
+    :host([data-superchrome-theme="dark"]) b { color: #f1f1f1; }
   </style><div class="line" role="status"></div>`;
   const line = shadow.querySelector('.line');
 
@@ -55,6 +57,7 @@
     const id = enabled ? watchId() : null;
     if (!id) { host.remove(); current = null; token++; return; }
     if (!mount()) return;
+    globalThis.SuperChromeTheme?.apply(host);
     if (id === current) return;
     current = id;
     const mine = ++token;

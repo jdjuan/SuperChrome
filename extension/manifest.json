@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "3.25.0",
+  "version": "3.26.0",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Instagram and Facebook video stats, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -71,6 +71,7 @@
       "js": [
         "theme.js",
         "instagram-focus.js",
+        "brand-icon.js",
         "instagram-images.js",
         "instagram-stats.js",
         "instagram-audio.js"
@@ -217,6 +218,8 @@
         "https://www.twitter.com/*"
       ],
       "js": [
+        "brand-icon.js",
+        "theme.js",
         "video-download.js"
       ],
       "run_at": "document_idle"
@@ -227,6 +230,7 @@
         "https://youtube.com/*"
       ],
       "js": [
+        "theme.js",
         "youtube-stats.js"
       ],
       "run_at": "document_idle"

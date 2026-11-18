@@ -10,12 +10,18 @@
     button:disabled { cursor: wait; }
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
     .status[hidden] { display: none; }
+    .g { display: grid; place-items: center; }
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }
   </style>`;
+  const BADGE = `.g { display: grid; place-items: center; }
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
   const buttons = new Map(), inlines = new Map();
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
-  // Inside Instagram's own action row the button takes the row's colors, so it reads in light and dark.
+  // Inside Instagram's action row the button owns its colors, chosen from the page's actual background (light or dark).
   const INLINE_STYLE = `:host { display: inline-flex; align-items: center; flex: none; }
-    button { all: initial; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: inherit; font: 20px/1 system-ui; }
+    button { all: initial; box-sizing: border-box; position: relative; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: #262626; font: 20px/1 system-ui; }
+    :host([data-superchrome-theme="dark"]) button { color: #f5f5f5; }
+    ${BADGE}
     button:hover { background: rgba(127, 127, 127, .22); }
     button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
     button:disabled { cursor: wait; opacity: .7; }`;
@@ -28,6 +34,8 @@
       let item = share.closest('[role="button"], a, button');
       if (!item) return null;
       while (item.parentElement && item.parentElement !== el && item.parentElement.querySelectorAll('svg[aria-label]').length === 1) item = item.parentElement;
+      // Counts sit after their icon; the button goes after the Share count, not between them.
+      while (item.nextElementSibling && !item.nextElementSibling.querySelector('svg') && item.nextElementSibling.textContent.trim()) item = item.nextElementSibling;
       return item;
     }
     return null;
@@ -84,7 +92,7 @@
   function showVideoStatus(button, job) {
     const done = typeof job.ok === 'boolean';
     button.disabled = !done;
-    button.textContent = done ? (job.ok ? '✓' : '!') : '…';
+    button.glyph.textContent = done ? (job.ok ? '✓' : '!') : '…';
     const raw = job.message || job.error || 'Downloading…';
     const percent = job.percent || raw.match(/\[download\]\s+(\d+(?:\.\d+)?%)/)?.[1];
     const message = done ? (job.ok ? 'Saved to Downloads' : `${raw}${job.needsHelper ? '' : ' Click to retry.'}`)
@@ -121,7 +129,7 @@
       return;
     }
     button.disabled = true;
-    button.textContent = '…';
+    button.glyph.textContent = '…';
     button.title = 'Downloading image…';
     let blobUrl;
     try {
@@ -139,10 +147,10 @@
       shadow.append(link);
       link.click();
       link.remove();
-      button.textContent = '✓';
+      button.glyph.textContent = '✓';
       button.title = 'Image saved';
     } catch {
-      button.textContent = '!';
+      button.glyph.textContent = '!';
       button.title = 'Could not save image. Click to retry.';
     } finally {
       button.disabled = false;
@@ -179,8 +187,16 @@
       if (!button) {
         button = document.createElement('button');
         button.type = 'button';
-        if (kind === 'video') button.innerHTML = ICON; else button.textContent = '↓';
-        button.title = `Download ${kind}`;
+        button.glyph = document.createElement('span');
+        button.glyph.className = 'g';
+        if (kind === 'video') button.glyph.innerHTML = ICON; else button.glyph.textContent = '↓';
+        button.append(button.glyph);
+        if (globalThis.SuperChromeBrandIcon) {
+          const badge = document.createElement('img');
+          badge.className = 'badge'; badge.alt = ''; badge.src = globalThis.SuperChromeBrandIcon;
+          button.append(badge);
+        }
+        button.title = `Download ${kind} · SuperChrome`;
         button.setAttribute('aria-label', `Download Instagram ${kind}`);
         button.addEventListener('click', event => {event.preventDefault(); event.stopPropagation(); save(img, button);});
         const status = document.createElement('span');
@@ -203,6 +219,7 @@
         }
         if (inline.previousElementSibling !== item) item.after(inline);
         if (button.parentNode !== inline.shadowRoot) inline.shadowRoot.append(button);
+        if (!inline.themedAt || Date.now() - inline.themedAt > 1000) { inline.themedAt = Date.now(); globalThis.SuperChromeTheme?.apply(inline); }
         const r = button.getBoundingClientRect();
         button.status.style.left = `${Math.max(8, r.right - 255)}px`;
         button.status.style.top = `${r.bottom + 8}px`;

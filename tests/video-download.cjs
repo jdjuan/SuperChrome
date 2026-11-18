@@ -8,7 +8,7 @@ function setup(url,html,stored={}){
  w.requestAnimationFrame=f=>frames.push(f);w.setInterval=()=>0;w.setTimeout=()=>0;
  w.document.elementFromPoint=()=>null;
  const size=el=>{el.getBoundingClientRect=()=>({width:640,height:360,top:60,left:20,right:660,bottom:420});el.getClientRects=()=>[{}];};
- w.eval(fs.readFileSync('extension/video-download.js','utf8'));
+ w.matchMedia=()=>({matches:false});w.eval(fs.readFileSync('extension/brand-icon.js','utf8'));w.eval(fs.readFileSync('extension/theme.js','utf8'));w.eval(fs.readFileSync('extension/video-download.js','utf8'));
  const flush=async()=>{await tick();while(frames.length)frames.shift()();};
  const host=()=>w.document.querySelector('[data-superchrome="video-download"]');
  const buttons=()=>host()?[...host().shadowRoot.querySelectorAll('button')]:[];
@@ -18,7 +18,7 @@ function setup(url,html,stored={}){
  // YouTube watch page: one button, canonical URL (playlist/time params dropped), helper-needed message surfaced.
  let t=setup('https://www.youtube.com/watch?v=abc123&list=PL1&t=30','<div id="movie_player"><video></video></div>');
  t.size(t.w.document.querySelector('video'));await t.flush();
- assert.equal(t.buttons().length,1);const b=t.buttons()[0];assert.equal(b.title,'Download video');
+ assert.equal(t.buttons().length,1);const b=t.buttons()[0];assert.equal(b.title,'Download video · SuperChrome');
  b.click();await tick();assert.deepEqual(JSON.parse(JSON.stringify(t.sent.at(-1))),{action:'download',url:'https://www.youtube.com/watch?v=abc123'});
  assert.equal(b.disabled,true);
  t.change({job:{newValue:{url:'https://www.youtube.com/watch?v=abc123',message:'[download]  42.5% of 2MiB'}}});assert.equal(b.title,'Downloading 42.5%');
@@ -47,7 +47,8 @@ function setup(url,html,stored={}){
  {const bar=t.w.document.querySelector('#top-level-buttons-computed');Object.defineProperty(bar,'offsetParent',{get:()=>t.w.document.body});t.size(t.w.document.querySelector('video'));await t.flush();
   const inline=bar.querySelector('[data-superchrome="video-download-inline"]');assert.ok(inline,'host inside the action row');assert.equal(inline.parentElement,bar);
   const ib=inline.shadowRoot.querySelector('button');assert.ok(ib);assert.equal(t.buttons().length,0,'no floating copy');
-  assert.match(inline.shadowRoot.querySelector('style').textContent,/yt-spec-text-primary/,'uses the site theme colors');
+  assert.match(inline.shadowRoot.querySelector('style').textContent,/data-superchrome-theme="dark"/,'owns light and dark colors');
+  assert.ok(ib.querySelector('img.badge')?.src.startsWith('data:image/png'),'wears the SuperChrome badge');
   ib.click();await tick();assert.equal(t.sent.at(-1).url,'https://www.youtube.com/watch?v=abc');
   t.change({youtubeDownloadButton:{newValue:false}});await t.flush();assert.equal(bar.querySelector('[data-superchrome="video-download-inline"]'),null,'switch removes the inline button');}
  t.w.close();
@@ -86,11 +87,12 @@ function setup(url,html,stored={}){
   const dom=new JSDOM(html,{url:'https://www.youtube.com/watch?v=abc',runScripts:'outside-only'}),w=dom.window;const ls=[];let fetched=0;
   w.chrome={storage:{onChanged:{addListener:f=>ls.push(f)},local:{get:async d=>d}}};w.setInterval=()=>0;
   w.fetch=async u=>{fetched++;return {ok:true,text:async()=>'<x>"uploadDate":"2005-04-24T03:31:52+00:00"..."videoDetails":{"videoId":"abc","title":"t","viewCount":"448787415","x":1}'};};
+  w.matchMedia=()=>({matches:false});w.document.documentElement.style.background='rgb(15,15,15)';w.eval(fs.readFileSync('extension/theme.js','utf8'));
   w.eval(fs.readFileSync('extension/youtube-stats.js','utf8'));await tick();await tick();
   const host=()=>w.document.querySelector('[data-superchrome="youtube-stats"]');
-  assert.ok(host(),'mounted above the owner row');assert.equal(host().nextElementSibling.id,'top-row');
+  assert.ok(host(),'mounted above the owner row');assert.equal(host().dataset.superchromeTheme,'dark','dark YouTube gets light text');assert.equal(host().nextElementSibling.id,'top-row');
   const text=host().shadowRoot.querySelector('.line').textContent;assert.match(text,/Uploaded .*2005/);assert.match(text,/448,787,415 views|448\.787\.415 views|448 787 415 views/);
-  assert.match(host().shadowRoot.querySelector('style').textContent,/yt-spec-text-secondary/);assert.equal(fetched,1);
+  assert.match(host().shadowRoot.querySelector('style').textContent,/data-superchrome-theme="dark"\]\) \.line/);assert.equal(fetched,1);
   ls.forEach(f=>f({youtubeStats:{newValue:false}},'local'));assert.equal(host(),null,'off removes it at once');
   ls.forEach(f=>f({youtubeStats:{newValue:true}},'local'));await tick();await tick();assert.ok(host(),'on brings it back without reload');assert.equal(fetched,1,'cached per video');
   w.history.pushState({},'','/watch?v=zzz');w.fetch=async()=>({ok:true,text:async()=>'"videoDetails":{"videoId":"zzz","viewCount":"5"}'});

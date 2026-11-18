@@ -19,7 +19,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  let request;w.chrome={runtime:{sendMessage:async message=>{request=message;return {ok:true}}}};
  await new Promise(setImmediate);while(frames.length)frames.shift()();
  w.fetch=async(url,options)=>{fetched=[url,options.headers['X-IG-App-ID']];return {ok:true,json:async()=>({items:[{video_versions:[{width:480,height:854,url:'https://scontent.cdninstagram.com/low.mp4'},{width:1080,height:1920,url:'https://scontent.cdninstagram.com/high.mp4'}]}]})}};
- button=host.shadowRoot.querySelector('button');assert.equal(button.title,'Download video');button.click();await new Promise(setImmediate);await new Promise(setImmediate);
+ button=host.shadowRoot.querySelector('button');assert.equal(button.title,'Download video · SuperChrome');button.click();await new Promise(setImmediate);await new Promise(setImmediate);
  assert.equal(fetched[0],'/api/v1/media/'+(((45n*64n+30n)*64n+44n)*64n+45n)+'/info/');assert.equal(fetched[1],'936619743392459');
  assert.deepEqual(JSON.parse(JSON.stringify(request)),{action:'download',url:w.location.href,media:[{url:'https://scontent.cdninstagram.com/high.mp4',filename:'instagram-test.mp4'}]});
  w.fetch=async()=>({ok:false,status:401});button.disabled=false;button.click();await new Promise(setImmediate);await new Promise(setImmediate);assert.match(request.directError,/Log in to Instagram/);assert.equal(request.media,undefined);assert.equal(button.textContent,'…');assert.equal(button.disabled,true);
