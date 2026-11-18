@@ -1,11 +1,14 @@
 (() => {
   let queue=Promise.resolve();
+  // Brave can hide its identity on websites. Detect it in the extension worker.
+  const isBrave=Promise.resolve().then(()=>navigator.brave?.isBrave()).catch(()=>false);
   function videoId(value){try{const url=new URL(value);if(url.protocol!=='https:'||!['youtube.com','www.youtube.com','m.youtube.com'].includes(url.hostname))return null;return url.pathname==='/watch'?url.searchParams.get('v'):url.pathname.match(/^\/live\/([\w-]+)/)?.[1];}catch{return null;}}
   chrome.runtime.onMessage.addListener((message,sender,reply)=>{
     if(message.type!=='youtube:retry')return;
     const tabId=sender.tab?.id,id=message.videoId;
     if(tabId==null||sender.frameId!==0||typeof id!=='string'||!/^[\w-]{6,64}$/.test(id)||videoId(sender.url)!==id){reply({ok:false});return;}
     queue=queue.catch(()=>{}).then(async()=>{
+      if(!await isBrave){reply({ok:false});return;}
       const {youtubeRecovery=true}=await chrome.storage.local.get({youtubeRecovery:true});
       if(!youtubeRecovery){reply({ok:false});return;}
       const frame=await chrome.webNavigation.getFrame({tabId,frameId:0});
