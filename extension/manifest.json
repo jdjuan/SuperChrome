@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SuperChrome",
-  "version": "3.26.0",
+  "version": "3.26.1",
   "minimum_chrome_version": "119",
   "description": "Video downloads, Instagram and Facebook video stats, popup protection, and remembered click-to-hide elements.",
   "permissions": [
@@ -221,17 +221,6 @@
         "brand-icon.js",
         "theme.js",
         "video-download.js"
-      ],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "https://www.youtube.com/*",
-        "https://youtube.com/*"
-      ],
-      "js": [
-        "theme.js",
-        "youtube-stats.js"
       ],
       "run_at": "document_idle"
     }

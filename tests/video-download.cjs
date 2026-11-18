@@ -65,6 +65,13 @@ function setup(url,html,stored={}){
   const inline=ig.document.querySelector('[data-superchrome="instagram-download-inline"]');assert.ok(inline,'inline host');assert.equal(inline.previousElementSibling.id,'share');assert.equal(inline.nextElementSibling.id,'save');
   assert.ok(inline.shadowRoot.querySelector('button'));assert.equal(ig.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot.querySelectorAll('button').length,0);
   ig.close();}
+ // Instagram photos get the same inline button after the Share count.
+ {const ig=new JSDOM('<main><article><div id="m"><img id="p" src="https://cdn.example/p.jpg"></div><section><div><div role="button"><svg aria-label="Like"></svg></div><span>5</span><div id="share" role="button"><svg aria-label="Share"></svg></div><span id="count">2</span></div></section></article></main>',{url:'https://www.instagram.com/',runScripts:'outside-only'}).window;const frames=[];
+  ig.chrome={storage:{onChanged:{addListener(){}},local:{get:async d=>d}},runtime:{}};ig.requestAnimationFrame=f=>frames.push(f);
+  const img=ig.document.querySelector('#p');img.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});img.getClientRects=()=>[{}];ig.document.elementFromPoint=()=>img;
+  ig.eval(fs.readFileSync('extension/brand-icon.js','utf8'));ig.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();
+  const inline=ig.document.querySelector('[data-superchrome="instagram-download-inline"]');assert.ok(inline,'photo button inline');assert.equal(inline.previousElementSibling.id,'count');
+  assert.ok(inline.shadowRoot.querySelector('img.badge'));ig.close();}
  // Popup switches: default on, saved on change, rolled back on failure, synced across changes.
  const popup=new JSDOM(fs.readFileSync('extension/popup.html','utf8'),{runScripts:'outside-only'}).window;let store={},listeners=[],fail=false;
  popup.chrome={storage:{local:{get:async d=>({...d,...store}),set:async o=>{if(fail)throw Error('x');Object.assign(store,o);}},onChanged:{addListener:f=>listeners.push(f)}}};
@@ -82,22 +89,5 @@ function setup(url,html,stored={}){
  const igHost=()=>ig.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot;assert.equal(igHost().querySelectorAll('button').length,0,'off in storage means no button');
  igChange({instagramDownloadButton:{newValue:true}},'local');while(frames.length)frames.shift()();assert.equal(igHost().querySelectorAll('button').length,1);
 
- // YouTube stats line under the title.
- {const html='<ytd-watch-metadata><div id="top-row"></div></ytd-watch-metadata>';
-  const dom=new JSDOM(html,{url:'https://www.youtube.com/watch?v=abc',runScripts:'outside-only'}),w=dom.window;const ls=[];let fetched=0;
-  w.chrome={storage:{onChanged:{addListener:f=>ls.push(f)},local:{get:async d=>d}}};w.setInterval=()=>0;
-  w.fetch=async u=>{fetched++;return {ok:true,text:async()=>'<x>"uploadDate":"2005-04-24T03:31:52+00:00"..."videoDetails":{"videoId":"abc","title":"t","viewCount":"448787415","x":1}'};};
-  w.matchMedia=()=>({matches:false});w.document.documentElement.style.background='rgb(15,15,15)';w.eval(fs.readFileSync('extension/theme.js','utf8'));
-  w.eval(fs.readFileSync('extension/youtube-stats.js','utf8'));await tick();await tick();
-  const host=()=>w.document.querySelector('[data-superchrome="youtube-stats"]');
-  assert.ok(host(),'mounted above the owner row');assert.equal(host().dataset.superchromeTheme,'dark','dark YouTube gets light text');assert.equal(host().nextElementSibling.id,'top-row');
-  const text=host().shadowRoot.querySelector('.line').textContent;assert.match(text,/Uploaded .*2005/);assert.match(text,/448,787,415 views|448\.787\.415 views|448 787 415 views/);
-  assert.match(host().shadowRoot.querySelector('style').textContent,/data-superchrome-theme="dark"\]\) \.line/);assert.equal(fetched,1);
-  ls.forEach(f=>f({youtubeStats:{newValue:false}},'local'));assert.equal(host(),null,'off removes it at once');
-  ls.forEach(f=>f({youtubeStats:{newValue:true}},'local'));await tick();await tick();assert.ok(host(),'on brings it back without reload');assert.equal(fetched,1,'cached per video');
-  w.history.pushState({},'','/watch?v=zzz');w.fetch=async()=>({ok:true,text:async()=>'"videoDetails":{"videoId":"zzz","viewCount":"5"}'});
-  w.dispatchEvent(new w.Event('yt-navigate-finish'));await tick();await tick();assert.match(host().shadowRoot.querySelector('.line').textContent,/5 views/);
-  w.history.pushState({},'','/results?search_query=x');w.dispatchEvent(new w.Event('yt-navigate-finish'));assert.equal(host(),null,'nothing off watch pages');
-  w.close();}
- console.log('PASS: YouTube and X in-page download buttons (URL, progress, helper message, per-post, overlap, on/off) and inline placement, YouTube date/views line, and popup switches for Instagram, YouTube and X.');
+ console.log('PASS: YouTube and X in-page download buttons (URL, progress, helper message, per-post, overlap, on/off) and inline placement, SuperChrome badge, and popup switches for Instagram, YouTube and X.');
 })().catch(e=>{console.error(e);process.exit(1)});

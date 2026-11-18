@@ -36,7 +36,7 @@ for(const tab of d.querySelectorAll('[role=tab]:not(#tools-tab)')){
   const logo=tab.querySelector('img');
   assert.ok(logo && fs.existsSync(path.join(__dirname,'../extension',logo.getAttribute('src'))));
 }
-{const {document}=page('https://www.youtube.com/watch?v=test');assert.equal(document.getElementById('inspect').closest('#youtube-app'),null,'YouTube stats are on the page, not a popup button');assert.ok(document.getElementById('youtube-stats-enabled'));}
+{const {document}=page('https://www.youtube.com/watch?v=test');assert.equal(document.getElementById('inspect').closest('#youtube-app'),null,'YouTube stats are on the page, not a popup button');assert.equal(document.getElementById('youtube-stats-enabled'),null);}
 for(const url of ['https://x.com/user/status/123']){
   const {document}=page(url);
   assert.equal(document.getElementById('inspect').closest('details, [hidden]'),null);

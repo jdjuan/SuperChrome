@@ -9,7 +9,7 @@
   const shadow = host.attachShadow({mode: 'open'});
   // Colors are owned here so the button reads on any video, in light or dark mode.
   const BADGE = `.g { display: grid; place-items: center; }
-    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; pointer-events: none; }`;
   const STYLE = `
     :host { all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
     button { all: initial; box-sizing: border-box; position: fixed; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #606060; border-radius: 50%; background: #202020; color: #fff; cursor: pointer; pointer-events: auto; font: 16px/1 system-ui; }
@@ -19,7 +19,7 @@
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
     .status[hidden] { display: none; }
     .g { display: grid; place-items: center; }
-    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; pointer-events: none; }`;
   // Inline mode sits in the site's own action row and takes its colors from the page, so it reads in light and dark.
   const INLINE_STYLE = `
     :host { display: inline-flex; align-items: center; flex: none; margin-left: 8px; }
@@ -160,6 +160,8 @@
           entry.inline = document.createElement('div');
           entry.inline.dataset.superchrome = 'video-download-inline';
           entry.inline.className = site;
+          // Inline styles beat the site's own spacing rules for children of its action row.
+          entry.inline.style.cssText = `display: inline-flex; flex: none; margin: 0 0 0 ${site === 'x' ? 0 : 8}px; padding: 0;`;
           entry.inline.attachShadow({mode: 'open'}).innerHTML = `<style>${INLINE_STYLE}</style>`;
         }
         if (entry.inline.parentElement !== anchor) anchor.append(entry.inline);

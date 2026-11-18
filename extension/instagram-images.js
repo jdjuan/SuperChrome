@@ -11,10 +11,10 @@
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
     .status[hidden] { display: none; }
     .g { display: grid; place-items: center; }
-    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; pointer-events: none; }
   </style>`;
   const BADGE = `.g { display: grid; place-items: center; }
-    .badge { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }`;
+    .badge { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; pointer-events: none; }`;
   const buttons = new Map(), inlines = new Map();
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
   // Inside Instagram's action row the button owns its colors, chosen from the page's actual background (light or dark).
@@ -25,10 +25,10 @@
     button:hover { background: rgba(127, 127, 127, .22); }
     button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
     button:disabled { cursor: wait; opacity: .7; }`;
-  // The slot just after this video's Share button, found by walking out from the video.
-  function videoAnchor(video) {
+  // The slot just after this post's Share button (and its count), found by walking out from the media.
+  function videoAnchor(video, kind) {
     for (let el = video.parentElement; el && el !== document.body; el = el.parentElement) {
-      if (el.querySelectorAll('video').length > 1) return null;
+      if (kind === 'video' && el.querySelectorAll('video').length > 1) return null;
       const share = el.querySelector('svg[aria-label="Share"]');
       if (!share) continue;
       let item = share.closest('[role="button"], a, button');
@@ -180,8 +180,9 @@
           if (hit && parent.contains(hit)) break;
         }
       }
-      const item = kind === 'video' ? videoAnchor(img) : null;
-      if (!item && hit && hit !== host && hit !== img && !media.contains(hit)) continue;
+      const item = videoAnchor(img, kind);
+      // Photos keep the covered-slide check so only the visible carousel slide gets the button.
+      if ((!item || kind === 'image') && hit && hit !== host && hit !== img && !media.contains(hit)) continue;
       found.add(img);
       let button = buttons.get(img);
       if (!button) {
