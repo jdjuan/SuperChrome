@@ -25,18 +25,30 @@
     button:hover { background: rgba(127, 127, 127, .22); }
     button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
     button:disabled { cursor: wait; opacity: .7; }`;
-  // The slot just after this post's Share button (and its count), found by walking out from the media.
-  function videoAnchor(video, kind) {
-    for (let el = video.parentElement; el && el !== document.body; el = el.parentElement) {
-      if (kind === 'video' && el.querySelectorAll('video').length > 1) return null;
+  // The slot just after this post's Share button (and its count), where the interaction icons end.
+  function slotAfter(share, limit) {
+    let item = share.closest('[role="button"], a, button');
+    if (!item) return null;
+    while (item.parentElement && item.parentElement !== limit && item.parentElement.querySelectorAll('svg[aria-label]').length === 1) item = item.parentElement;
+    // Counts sit after their icon; the button goes after the Share count, not between them.
+    while (item.nextElementSibling && !item.nextElementSibling.querySelector('svg') && item.nextElementSibling.textContent.trim()) item = item.nextElementSibling;
+    return item;
+  }
+  const shown = video => {
+    const r = video.getBoundingClientRect();
+    return r.width >= 120 && r.height >= 120 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+  };
+  function mediaAnchor(media, kind) {
+    // A post or open dialog with a single Share button is unambiguous, even with neighbouring slides or preloaded videos.
+    const scope = media.closest('article, [role="dialog"]');
+    const shares = scope ? scope.querySelectorAll('svg[aria-label="Share"]') : [];
+    if (shares.length === 1) return slotAfter(shares[0], scope);
+    // Photos outside a post (profile grids) never get a button. Reels pages stack several video posts: walk out to the first container holding only this video.
+    if (!scope && kind === 'image') return null;
+    for (let el = media.parentElement; el && el !== document.body; el = el.parentElement) {
+      if ([...el.querySelectorAll('video')].filter(shown).length > 1) return null;
       const share = el.querySelector('svg[aria-label="Share"]');
-      if (!share) continue;
-      let item = share.closest('[role="button"], a, button');
-      if (!item) return null;
-      while (item.parentElement && item.parentElement !== el && item.parentElement.querySelectorAll('svg[aria-label]').length === 1) item = item.parentElement;
-      // Counts sit after their icon; the button goes after the Share count, not between them.
-      while (item.nextElementSibling && !item.nextElementSibling.querySelector('svg') && item.nextElementSibling.textContent.trim()) item = item.nextElementSibling;
-      return item;
+      if (share) return slotAfter(share, el);
     }
     return null;
   }
@@ -160,8 +172,9 @@
   function reconcile() {
     scheduled = false;
     if (!host.isConnected) document.documentElement.append(host);
-    const found = new Set();
-    for (const img of enabled ? document.querySelectorAll('article img, main img, video') : []) {
+    const found = new Set(), claimed = new Set();
+    const candidates = enabled ? [...document.querySelectorAll('video'), ...document.querySelectorAll('article img, main img')] : [];
+    for (const img of candidates) {
       if (!img.closest('article') && !/^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(location.pathname)) continue;
       if (img.tagName === 'IMG' && img.parentElement?.querySelector('video')) continue;
       const kind = img.tagName === 'VIDEO' ? 'video' : 'image';
@@ -180,9 +193,11 @@
           if (hit && parent.contains(hit)) break;
         }
       }
-      const item = videoAnchor(img, kind);
-      // Photos keep the covered-slide check so only the visible carousel slide gets the button.
-      if ((!item || kind === 'image') && hit && hit !== host && hit !== img && !media.contains(hit)) continue;
+      // The button only lives in the post's own action row, once per post (videos win over photos).
+      const item = mediaAnchor(img, kind);
+      if (!item || claimed.has(item)) continue;
+      if (hit && hit !== host && hit !== img && !media.contains(hit)) continue;
+      claimed.add(item);
       found.add(img);
       let button = buttons.get(img);
       if (!button) {
@@ -210,28 +225,20 @@
         buttons.set(img, button);
         if (kind === 'video' && latestJob?.url === videoUrl(img) && (!latestJob.slide || videoSelection(img).slide === latestJob.slide)) showVideoStatus(button, latestJob);
       }
-      if (item) {
-        let inline = inlines.get(img);
-        if (!inline) {
-          inline = document.createElement('div');
-          inline.dataset.superchrome = 'instagram-download-inline';
-          inline.attachShadow({mode: 'open'}).innerHTML = `<style>${INLINE_STYLE}</style>`;
-          inlines.set(img, inline);
-        }
-        if (inline.previousElementSibling !== item) item.after(inline);
-        if (button.parentNode !== inline.shadowRoot) inline.shadowRoot.append(button);
-        if (!inline.themedAt || Date.now() - inline.themedAt > 1000) { inline.themedAt = Date.now(); globalThis.SuperChromeTheme?.apply(inline); }
-        const r = button.getBoundingClientRect();
-        button.status.style.left = `${Math.max(8, r.right - 255)}px`;
-        button.status.style.top = `${r.bottom + 8}px`;
-        continue;
-      }
-      inlines.get(img)?.remove();
-      if (button.parentNode !== shadow) shadow.append(button);
-      button.style.left = `${x - 15}px`;
-      button.style.top = `${y - 15}px`;
-      button.status.style.left = `${Math.max(8, x - 245)}px`;
-      button.status.style.top = `${y + 23}px`;
+      let inline = inlines.get(img);
+            if (!inline) {
+              inline = document.createElement('div');
+              inline.dataset.superchrome = 'instagram-download-inline';
+              inline.attachShadow({mode: 'open'}).innerHTML = `<style>${INLINE_STYLE}</style>`;
+              inlines.set(img, inline);
+            }
+            if (inline.previousElementSibling !== item) item.after(inline);
+            if (button.parentNode !== inline.shadowRoot) inline.shadowRoot.append(button);
+            if (!inline.themedAt || Date.now() - inline.themedAt > 1000) { inline.themedAt = Date.now(); globalThis.SuperChromeTheme?.apply(inline); }
+            const r = button.getBoundingClientRect();
+            button.status.style.left = `${Math.max(8, r.right - 255)}px`;
+            button.status.style.top = `${r.bottom + 8}px`;
+      
     }
     for (const [img, button] of buttons) if (!found.has(img)) {button.status.remove(); button.remove(); inlines.get(img)?.remove(); inlines.delete(img); buttons.delete(img);}
   }

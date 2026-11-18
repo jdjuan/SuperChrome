@@ -72,6 +72,15 @@ function setup(url,html,stored={}){
   ig.eval(fs.readFileSync('extension/brand-icon.js','utf8'));ig.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();
   const inline=ig.document.querySelector('[data-superchrome="instagram-download-inline"]');assert.ok(inline,'photo button inline');assert.equal(inline.previousElementSibling.id,'count');
   assert.ok(inline.shadowRoot.querySelector('img.badge'));ig.close();}
+ // Instagram: one button per post, even with several photos/slides and a video; never on grids; preloaded hidden videos don't block it.
+ {const mk=(html,url='https://www.instagram.com/')=>{const w=new JSDOM(html,{url,runScripts:'outside-only'}).window;const frames=[];w.chrome={storage:{onChanged:{addListener(){}},local:{get:async d=>d}},runtime:{}};w.requestAnimationFrame=f=>frames.push(f);
+    for(const el of w.document.querySelectorAll('img,video')){const hidden=el.dataset.hidden;el.getBoundingClientRect=()=>hidden?{width:0,height:0,top:0,left:0,right:0,bottom:0}:{width:500,height:500,top:20,left:20,right:520,bottom:520};el.getClientRects=()=>[{}];}
+    w.document.elementFromPoint=()=>null;return {w,run:async()=>{w.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();return w.document.querySelectorAll('[data-superchrome="instagram-download-inline"]').length;}};};
+  const row='<section><div role="button"><svg aria-label="Share"></svg></div></section>';
+  assert.equal(await mk(`<main><article><img src="a"><img src="b"><img src="c"><video></video>${row}</article></main>`).run(),1,'3 slides + video = one button');
+  assert.equal(await mk(`<div role="dialog"><video></video><video data-hidden="1"></video>${row}</div>`,'https://www.instagram.com/p/abc/').run(),1,'hidden preloaded video does not block the dialog');
+  assert.equal(await mk(`<main><img src="tile">${row}</main>`,'https://www.instagram.com/p/abc/').run(),0,'grid photos outside a post get nothing');
+  assert.equal(await mk('<main><article><img src="a"></article></main>').run(),0,'no action row, no floating fallback');}
  // Popup switches: default on, saved on change, rolled back on failure, synced across changes.
  const popup=new JSDOM(fs.readFileSync('extension/popup.html','utf8'),{runScripts:'outside-only'}).window;let store={},listeners=[],fail=false;
  popup.chrome={storage:{local:{get:async d=>({...d,...store}),set:async o=>{if(fail)throw Error('x');Object.assign(store,o);}},onChanged:{addListener:f=>listeners.push(f)}}};
@@ -82,11 +91,11 @@ function setup(url,html,stored={}){
  fail=true;el('x-download-button').click();await tick();assert.equal(el('x-download-button').checked,true);assert.match(el('x-download-status').textContent,/Could not save/);
  listeners.forEach(f=>f({instagramDownloadButton:{newValue:false}},'local'));assert.equal(el('instagram-download-button').checked,false);
  // Instagram's content script honours its switch.
- const ig=new JSDOM('<main><article><img id="p" src="https://cdn.example/p.jpg"></article></main>',{url:'https://www.instagram.com/p/t/',runScripts:'outside-only'}).window;const frames=[];let igChange;
+ const ig=new JSDOM('<main><article><img id="p" src="https://cdn.example/p.jpg"><section><div role="button"><svg aria-label="Share"></svg></div></section></article></main>',{url:'https://www.instagram.com/p/t/',runScripts:'outside-only'}).window;const frames=[];let igChange;
  ig.chrome={storage:{onChanged:{addListener:f=>igChange=f},local:{get:async()=>({instagramDownloadButton:false})}},runtime:{}};ig.requestAnimationFrame=f=>frames.push(f);
  const img=ig.document.querySelector('img');img.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});img.getClientRects=()=>[{}];ig.document.elementFromPoint=()=>img;
  ig.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();
- const igHost=()=>ig.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot;assert.equal(igHost().querySelectorAll('button').length,0,'off in storage means no button');
+ const igHost=()=>({querySelectorAll:()=>[...ig.document.querySelectorAll('[data-superchrome="instagram-download-inline"]')].flatMap(h=>[...h.shadowRoot.querySelectorAll('button')])});assert.equal(igHost().querySelectorAll('button').length,0,'off in storage means no button');
  igChange({instagramDownloadButton:{newValue:true}},'local');while(frames.length)frames.shift()();assert.equal(igHost().querySelectorAll('button').length,1);
 
  console.log('PASS: YouTube and X in-page download buttons (URL, progress, helper message, per-post, overlap, on/off) and inline placement, SuperChrome badge, and popup switches for Instagram, YouTube and X.');

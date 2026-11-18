@@ -1,6 +1,6 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
 (async()=>{
- const dom=new JSDOM('<main><article><div class="_aagu"><div><img id="photo" src="https://cdn.example/photo.jpg"></div><div id="interaction-layer"></div></div><img id="avatar"></article></main>',{url:'https://www.instagram.com/p/test/',runScripts:'outside-only'}),w=dom.window;
+ const dom=new JSDOM('<main><article><div class="_aagu"><div><img id="photo" src="https://cdn.example/photo.jpg"></div><div id="interaction-layer"></div></div><img id="avatar"><section><div role="button"><svg aria-label="Share"></svg></div></section></article></main>',{url:'https://www.instagram.com/p/test/',runScripts:'outside-only'}),w=dom.window;
  const jobListeners=[];const onJob=(...a)=>jobListeners.forEach(f=>f(...a));w.chrome={storage:{onChanged:{addListener:fn=>jobListeners.push(fn)},local:{get:async d=>d}},runtime:{}};
  const frames=[];w.requestAnimationFrame=fn=>frames.push(fn);
  const img=w.document.querySelector('#photo');img.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});img.getClientRects=()=>[{}];
@@ -9,17 +9,17 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  w.HTMLAnchorElement.prototype.click=function(){download=this.download;};
  w.document.elementFromPoint=()=>w.document.querySelector('#interaction-layer');
  w.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await new Promise(setImmediate);frames.shift()();
- const host=w.document.querySelector('[data-superchrome="instagram-images"]');let button=host.shadowRoot.querySelector('button');assert.ok(button);assert.equal(host.shadowRoot.querySelectorAll('button').length,1);
+ const find=()=>w.document.querySelector('[data-superchrome="instagram-download-inline"]')?.shadowRoot.querySelector('button')||null;let button=find();assert.ok(button);assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-download-inline"]').length,1);assert.equal(w.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot.querySelectorAll('button').length,0,'no floating button');
  button.click();await new Promise(setImmediate);assert.equal(fetched,img.src);assert.match(download,/^instagram-\d+\.jpg$/);assert.equal(button.textContent,'✓');assert.equal(button.disabled,false);
  w.fetch=async()=>{throw Error('blocked')};button.click();await new Promise(setImmediate);assert.match(button.title,/retry/);assert.equal(button.disabled,false);
- img.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();assert.equal(host.shadowRoot.querySelector('button'),null);
+ img.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();assert.equal(find(),null);
  const video=w.document.createElement('video');w.document.querySelector('article').append(video);
  video.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});video.getClientRects=()=>[{}];
  w.document.elementFromPoint=()=>video;
  let request;w.chrome={runtime:{sendMessage:async message=>{request=message;return {ok:true}}}};
  await new Promise(setImmediate);while(frames.length)frames.shift()();
  w.fetch=async(url,options)=>{fetched=[url,options.headers['X-IG-App-ID']];return {ok:true,json:async()=>({items:[{video_versions:[{width:480,height:854,url:'https://scontent.cdninstagram.com/low.mp4'},{width:1080,height:1920,url:'https://scontent.cdninstagram.com/high.mp4'}]}]})}};
- button=host.shadowRoot.querySelector('button');assert.equal(button.title,'Download video · SuperChrome');button.click();await new Promise(setImmediate);await new Promise(setImmediate);
+ button=find();assert.equal(button.title,'Download video · SuperChrome');button.click();await new Promise(setImmediate);await new Promise(setImmediate);
  assert.equal(fetched[0],'/api/v1/media/'+(((45n*64n+30n)*64n+44n)*64n+45n)+'/info/');assert.equal(fetched[1],'936619743392459');
  assert.deepEqual(JSON.parse(JSON.stringify(request)),{action:'download',url:w.location.href,media:[{url:'https://scontent.cdninstagram.com/high.mp4',filename:'instagram-test.mp4'}]});
  w.fetch=async()=>({ok:false,status:401});button.disabled=false;button.click();await new Promise(setImmediate);await new Promise(setImmediate);assert.match(request.directError,/Log in to Instagram/);assert.equal(request.media,undefined);assert.equal(button.textContent,'…');assert.equal(button.disabled,true);
@@ -32,7 +32,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  onJob({job:{newValue:{url:w.location.href,ok:false,message:'Helper disconnected'}}},'local');assert.match(button.status.textContent,/Helper disconnected/);assert.equal(button.disabled,false);
  video.remove();await new Promise(setImmediate);while(frames.length)frames.shift()();
  w.document.querySelector('article').append(video);await new Promise(setImmediate);while(frames.length)frames.shift()();
- button=host.shadowRoot.querySelector('button');assert.match(button.status.textContent,/Helper disconnected/);
+ button=find();assert.match(button.status.textContent,/Helper disconnected/);
  const list=w.document.createElement('ul');const spacer=w.document.createElement('li');spacer.style.transform='translateX(3999px)';spacer.getBoundingClientRect=()=>({width:1});list.append(spacer);
  const slide=w.document.createElement('li');slide.style.transform='translateX(1000px)';slide.getBoundingClientRect=()=>({width:500});slide.append(video);list.append(slide);w.document.querySelector('article').append(list);
  onJob({job:{newValue:{url:w.location.href,slide:3,ok:true}}},'local');
