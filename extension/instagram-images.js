@@ -12,6 +12,7 @@
     .status[hidden] { display: none; }
   </style>`;
   const buttons = new Map();
+  let enabled = false, revision = 0;
   let scheduled = false;
   let latestJob = null;
   const sourceFor = img => img.currentSrc || img.src;
@@ -132,7 +133,7 @@
     scheduled = false;
     if (!host.isConnected) document.documentElement.append(host);
     const found = new Set();
-    for (const img of document.querySelectorAll('article img, main img, video')) {
+    for (const img of enabled ? document.querySelectorAll('article img, main img, video') : []) {
       if (!img.closest('article') && !/^\/(?:[\w.]+\/)?(p|reel|reels)\/[^/]+/.test(location.pathname)) continue;
       if (img.tagName === 'IMG' && img.parentElement?.querySelector('video')) continue;
       const kind = img.tagName === 'VIDEO' ? 'video' : 'image';
@@ -181,6 +182,14 @@
   function schedule() {
     if (!scheduled) {scheduled = true; requestAnimationFrame(reconcile);}
   }
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area === 'local' && changes.instagramDownloadButton) { revision++; enabled = changes.instagramDownloadButton.newValue !== false; schedule(); }
+  });
+  const initialRevision = revision;
+  chrome.storage?.local?.get?.({instagramDownloadButton: true}).then(settings => {
+    if (revision === initialRevision) enabled = settings.instagramDownloadButton !== false;
+    schedule();
+  }).catch(() => {});
   new MutationObserver(schedule).observe(document, {childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'srcset', 'style', 'class']});
   addEventListener('scroll', schedule, true);
   addEventListener('resize', schedule);

@@ -1,7 +1,7 @@
 // Video downloads. Instagram and X save directly through chrome.downloads;
 // YouTube (and direct-download failures) use the optional local helper.
 const PAGE_HOSTS = ['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','x.com','www.x.com','twitter.com','www.twitter.com','mobile.twitter.com'];
-const HELPER_MISSING = 'YouTube downloads need the local helper. Open SuperChrome → Download Video and copy the setup prompt.';
+const HELPER_MISSING = 'YouTube downloads need the local helper. Open SuperChrome → YouTube and copy the setup prompt.';
 let busy = false;
 
 function siteOf(url) {

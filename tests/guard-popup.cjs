@@ -8,7 +8,7 @@ async function setup(url='https://www.youtube.com/watch?v=1',initial={}){
 (async()=>{
  const x=await setup(),names=()=>x.find('guard-sites').textContent;
  assert.match(names(),/Cuevana/);assert.match(names(),/Cineb/);assert.equal(x.find('guard-count').textContent,'2');
- assert.equal(x.find('site').textContent,'Block popups on YouTube');x.find('site').click();await tick();assert.equal(x.get().sites['www.youtube.com'],true);assert.match(names(),/YouTube/);assert.equal(x.find('guard-count').textContent,'3');
+ assert.equal(x.find('site-label').textContent,'Block popups on YouTube');assert.equal(x.find('site').checked,false);x.find('site').click();await tick();assert.equal(x.get().sites['www.youtube.com'],true);assert.match(names(),/YouTube/);assert.equal(x.find('guard-count').textContent,'3');
  x.find('guard-sites').querySelector('[aria-label="Remove YouTube"]').click();await tick();assert.equal(x.get().sites['www.youtube.com'],false);assert.ok(!names().includes('YouTube'));
  x.find('guard-sites').querySelector('[aria-label="Remove Cuevana"]').click();await tick();assert.equal(x.w.guardPolicy.enabledFor('cuevana3.example',x.get()),false);assert.equal(x.w.guardPolicy.enabledFor('cineb.st',x.get()),true);
  x.find('enabled').click();await tick();assert.equal(x.get().enabled,false);assert.match(names(),/Cineb/);assert.match(x.find('guard-status').textContent,/paused/);

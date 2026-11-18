@@ -61,10 +61,15 @@ nav img{display:block;object-fit:contain}
 #netflix-tab img{width:27px;height:27px}
 @media(prefers-color-scheme:dark){#x-tab img{filter:invert(1)}}
 .video-actions button:not([hidden]){margin-bottom:0}
-.video-actions .video-link{display:none}
-#tools-app .video-link{display:block}
-#guard-panel>.feature-line{padding:5px 0}
-#guard-panel>#site{margin:4px 0 8px}
 #guard-count{margin-left:5px;color:var(--muted);font-size:11px}
 #guard-sites{margin:0}
 #guard-sites li{padding:7px 0}
+
+/* Popup blocker: one card holding the master switch, this site and the list. */
+#guard-panel{margin:0 0 12px;padding:2px 12px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+#guard-panel>h3{margin:10px 0 2px}
+#guard-panel .feature-line{padding:4px 0}
+#guard-panel .guard-site{border-top:1px solid var(--line)}
+#guard-panel .app-action{border:0;border-top:1px solid var(--line)}
+#guard-panel #reload{margin:2px 0 4px}
+#helper-ready{margin:6px 0}

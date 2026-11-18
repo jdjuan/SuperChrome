@@ -38,26 +38,31 @@ for(const tab of d.querySelectorAll('[role=tab]:not(#tools-tab)')){
 }
 for(const url of ['https://www.youtube.com/watch?v=test','https://x.com/user/status/123']){
   const {document}=page(url);
-  for(const id of ['download','inspect'])assert.equal(document.getElementById(id).closest('details, [hidden]'),null);
+  assert.equal(document.getElementById('inspect').closest('details, [hidden]'),null);
+  assert.equal(document.getElementById('download'),null,'download lives on the page, not in the popup');
+  assert.equal(document.getElementById('url'),null,'no paste-a-link download');
 }
+for(const id of ['instagram','youtube','x']){
+  const toggle=d.getElementById(id+'-download-button');
+  assert.ok(toggle&&toggle.closest('#'+id+'-app'),id+' has a download button switch');
+}
+assert.equal(d.querySelector('#tools-app #download-panel, #tools-app #url'),null);
+assert.ok(d.querySelector('#tools-app #guard-panel #enabled'));
+assert.ok(d.querySelector('#guard-panel #site'),'current-site switch lives inside the popup blocker card');
 const info=instagram.querySelector('summary[aria-label="About Auto-unmute videos"]');
 assert.equal(info.parentElement.open,false);
 info.click();
 assert.equal(info.parentElement.open,true);
 assert.match(info.parentElement.textContent,/manually mute|mute the current video/);
 
-const download=d.getElementById('url');
-download.value='https://www.instagram.com/p/example/';
 d.getElementById('instagram-tab').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
 assert.equal(w.document.activeElement.id,'youtube-tab');
 const youtube=active(w,'youtube-tab');
-assert.equal(youtube.querySelector('#url'),download);
-assert.equal(download.value,'https://www.instagram.com/p/example/');
+assert.ok(youtube.querySelector('#helper-setup'));
 assert.ok(youtube.querySelector('#video-rewind-enabled'));
 d.getElementById('netflix-tab').click();
 const netflix=active(w,'netflix-tab');
 assert.ok(netflix.querySelector('#video-rewind-enabled'));
-assert.equal(netflix.querySelector('#url'),null);
 d.getElementById('netflix-tab').dispatchEvent(new w.KeyboardEvent('keydown',{key:'End',bubbles:true}));
 active(w,'tools-tab');
 d.getElementById('tools-tab').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
