@@ -1,7 +1,56 @@
 (() => {
- const descriptions={'instagram-audio-tab':'Start Instagram videos with sound automatically.','ad-library-tab':'Days running and audience cues in Meta Ad Library.','video-shortcuts-tab':'Rewind five seconds on YouTube and Netflix.','appearance-tab':'Match Gmail and LinkedIn to your system appearance.','hide-tab':'Hide social feeds and reveal them for timed breaks.','download-tab':'Save videos from YouTube, Instagram and X.','reel-tab':'Check dates and views on Facebook reels.','guard-tab':'Block popups on Cuevana, Cineb or sites you enable.','brave-tab':'Retry YouTube when its ad-blocker warning blocks playback in Brave.'};
- const tabs=[...document.querySelectorAll('[role=tab]')];
- const select=tab=>{if(!tab)return;document.querySelector('#current-site').textContent=descriptions[tab.id]||'';for(const item of tabs){const active=item===tab;item.setAttribute('aria-selected',String(active));item.tabIndex=active?0:-1;document.getElementById(item.getAttribute('aria-controls')).hidden=!active;}};
- tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>select(tab));tab.addEventListener('keydown',event=>{let next;if(['ArrowRight','ArrowDown'].includes(event.key))next=(index+1)%tabs.length;if(['ArrowLeft','ArrowUp'].includes(event.key))next=(index+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();select(tabs[next]);tabs[next].focus();}});});
- chrome.tabs.query({active:true,currentWindow:true},([tab])=>{try{const url=new URL(tab?.url);if(/(^|\.)netflix\.com$/.test(url.hostname))select(document.querySelector('#video-shortcuts-tab'));else if(url.hostname==='mail.google.com')select(document.querySelector('#appearance-tab'));else if(url.hostname.endsWith('facebook.com') && url.pathname.startsWith('/ads/library'))select(document.querySelector('#ad-library-tab'));else if(/(^|\.)facebook\.com$/.test(url.hostname))select(document.querySelector('#reel-tab'));else if(guardPolicy.defaultFor(url.hostname))select(document.querySelector('#guard-tab'));else if(/(^|\.)(youtube\.com|youtu\.be)$/.test(url.hostname))select(document.querySelector('#hide-tab'));}catch{}});
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const shared = document.getElementById('shared-tools');
+  const tools = [...shared.children];
+
+  function select(tab) {
+    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+    // Move the original controls so listeners, entered URLs and job status survive tab changes.
+    for (const tool of tools) {
+      const destination = panel.querySelector(`[data-tool-slot="${tool.id}"]`) || shared;
+      if (tool.parentElement !== destination) destination.append(tool);
+    }
+    for (const item of tabs) {
+      const active = item === tab;
+      item.setAttribute('aria-selected', String(active));
+      item.tabIndex = active ? 0 : -1;
+      document.getElementById(item.getAttribute('aria-controls')).hidden = !active;
+    }
+  }
+
+  let chosen = false;
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+      chosen = true;
+      select(tab);
+    });
+    tab.addEventListener('keydown', event => {
+      let next;
+      if (['ArrowRight', 'ArrowDown'].includes(event.key)) next = (index + 1) % tabs.length;
+      if (['ArrowLeft', 'ArrowUp'].includes(event.key)) next = (index + tabs.length - 1) % tabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = tabs.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      chosen = true;
+      select(tabs[next]);
+      tabs[next].focus();
+    });
+  });
+
+  function appFor(url) {
+    const host = new URL(url).hostname;
+    if (host === 'mail.google.com') return 'gmail';
+    if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return 'x';
+    if (host === 'youtu.be') return 'youtube';
+    return host.match(/(?:^|\.)(instagram|youtube|linkedin|facebook|netflix)\.com$/)?.[1] || 'tools';
+  }
+
+  select(document.getElementById('tools-tab'));
+  chrome.tabs.query({active:true, currentWindow:true}, ([tab]) => {
+    if (chosen) return;
+    let app = 'tools';
+    try { app = appFor(tab?.url); } catch {}
+    select(document.getElementById(app + '-tab'));
+  });
 })();

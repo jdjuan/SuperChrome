@@ -24,3 +24,35 @@ button{font:inherit;font-family:inherit;font-size:12px;font-weight:650;cursor:po
 body{width:540px}.toolbox{grid-template-columns:150px minmax(0,1fr)}nav{padding:12px 8px;max-height:470px;gap:5px}nav button{flex-direction:row;justify-content:flex-start;text-align:left;gap:10px;padding:12px 9px;min-height:51px;font-size:12px}nav svg{flex:none;width:19px;height:19px}nav span{min-width:0}h2,#hide-panel h2{font-size:25px;letter-spacing:-.7px;margin-bottom:10px}.intro{margin:0 0 18px;font-size:12px}.platforms{display:flex;gap:14px;margin:16px 0 20px;flex-wrap:wrap}.platforms span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}.platforms svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7}.current-site-card{border:1px solid var(--line);background:transparent;padding:10px;margin:14px 0 20px}#guard-sites small{font-size:11px}#reload{width:auto;padding:6px 10px;font-size:11px}#guard-panel>small{margin-top:4px}summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
 body.update-only{width:340px}body.update-only>:not(.updates){display:none!important}body.update-only .updates{margin:0;padding:24px;min-width:300px}body.update-only .updates>:not(#reload-superchrome){display:none}body.update-only #reload-superchrome{padding:16px 18px;font-size:15px}
+
+/* App navigation and compact settings. Info opens inline so it never clips. */
+body{width:420px}
+.brand{padding:14px 20px;gap:9px}
+.brand img{width:32px;height:32px}
+.brand h1{font-size:21px}
+.toolbox{grid-template-columns:56px minmax(0,1fr);min-height:0;border-radius:14px}
+nav{padding:8px 6px;gap:4px;max-height:420px}
+nav button{justify-content:center;min-height:40px;padding:8px;border-radius:8px}
+nav svg{width:21px;height:21px}
+nav button[aria-selected=true]{background:var(--wash);box-shadow:inset 0 0 0 1px var(--line)}
+.workspace{padding:16px;max-height:420px}
+.app-panel h2{font-size:22px;margin:0 0 8px}
+.app-panel h3{font-size:12px;margin:14px 0 2px;color:var(--muted)}
+.feature,.app-panel .feed-row{border-bottom:1px solid var(--line);padding:6px 0}
+.feature-line,.app-panel .youtube-row{display:flex;align-items:center;flex-wrap:wrap;gap:0 7px}
+.feature-line .toggle,.app-panel .youtube-row>.toggle{flex:1;min-height:29px;margin:0;padding:0;gap:9px;font-size:13px}
+.feature-line .toggle input,.app-panel .youtube-row>.toggle input{appearance:none;position:relative;width:29px;height:17px;border:1px solid var(--subtle);border-radius:12px;background:var(--control);flex:none}
+.feature-line .toggle input::before,.app-panel .youtube-row>.toggle input::before{display:block;content:"";position:absolute;top:3px;left:3px;width:9px;height:9px;border-radius:50%;background:var(--subtle)}
+.feature-line .toggle input:checked,.app-panel .youtube-row>.toggle input:checked{background:var(--accent);border-color:var(--accent)}
+.feature-line .toggle input:checked::before,.app-panel .youtube-row>.toggle input:checked::before{left:15px;background:var(--accent-ink)}
+.app-panel details.feature-info{display:contents}
+.feature-info summary{display:grid;place-items:center;width:28px;height:28px;padding:0;color:var(--muted);cursor:pointer;border-radius:6px;list-style:none}
+.feature-info summary::-webkit-details-marker{display:none}
+.feature-info summary:hover,.feature-info[open] summary{background:var(--wash);color:var(--accent)}
+.feature-info svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.feature-info p{order:2;flex-basis:100%;margin:5px 0 3px;padding:7px 9px;background:var(--bg);border-radius:6px;color:var(--muted);font-size:12px}
+.app-action{border-bottom:1px solid var(--line)}
+.app-action>summary{padding:9px 0;cursor:pointer;color:var(--text);font-size:13px;font-weight:650}
+.action-body{padding-bottom:7px}
+.app-action input[type=url]{margin-bottom:5px}
+#guard-panel .feature-line .toggle{margin:0;padding:0!important}
