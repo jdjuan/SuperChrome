@@ -2,7 +2,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
 (async()=>{
  const dom=new JSDOM('<main><article><div class="_aagu"><div><img id="photo" src="https://cdn.example/photo.jpg"></div><div id="interaction-layer"></div></div><img id="avatar"><section><div role="button"><svg aria-label="Share"></svg></div></section></article></main>',{url:'https://www.instagram.com/p/test/',runScripts:'outside-only'}),w=dom.window;
  const jobListeners=[];const onJob=(...a)=>jobListeners.forEach(f=>f(...a));w.chrome={storage:{onChanged:{addListener:fn=>jobListeners.push(fn)},local:{get:async d=>d}},runtime:{}};
- const frames=[];w.requestAnimationFrame=fn=>frames.push(fn);
+ w.SVGElement.prototype.getBoundingClientRect=function(){return {width:24,height:24,top:0,left:0,right:24,bottom:24};};const frames=[];w.requestAnimationFrame=fn=>frames.push(fn);
  const img=w.document.querySelector('#photo');img.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});img.getClientRects=()=>[{}];
  let fetched,download;w.fetch=async url=>{fetched=url;return {ok:true,blob:async()=>({type:'image/jpeg'})}};
  w.URL.createObjectURL=()=> 'blob:test';w.URL.revokeObjectURL=()=>{};w.setTimeout=()=>{};

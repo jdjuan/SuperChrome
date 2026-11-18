@@ -38,16 +38,22 @@
     const r = video.getBoundingClientRect();
     return r.width >= 120 && r.height >= 120 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
   };
+  // Instagram labels the icon "Share" in the feed and "Share Post" in open posts; hidden duplicates are ignored.
+  const SHARE = 'svg[aria-label="Share"], svg[aria-label="Share Post"]';
+  const sharesIn = scope => [...scope.querySelectorAll(SHARE)].filter(svg => svg.getBoundingClientRect().width > 0);
   function mediaAnchor(media, kind) {
     // A post or open dialog with a single Share button is unambiguous, even with neighbouring slides or preloaded videos.
-    const scope = media.closest('article, [role="dialog"]');
-    const shares = scope ? scope.querySelectorAll('svg[aria-label="Share"]') : [];
-    if (shares.length === 1) return slotAfter(shares[0], scope);
+    // In an open post the action row sits beside the article, inside the dialog.
+    const scopes = [media.closest('article'), media.closest('[role="dialog"]')];
+    for (const scope of scopes) {
+      const shares = scope ? sharesIn(scope) : [];
+      if (shares.length === 1) return slotAfter(shares[0], scope);
+    }
     // Photos outside a post (profile grids) never get a button. Reels pages stack several video posts: walk out to the first container holding only this video.
-    if (!scope && kind === 'image') return null;
+    if (!scopes[0] && !scopes[1] && kind === 'image') return null;
     for (let el = media.parentElement; el && el !== document.body; el = el.parentElement) {
       if ([...el.querySelectorAll('video')].filter(shown).length > 1) return null;
-      const share = el.querySelector('svg[aria-label="Share"]');
+      const share = sharesIn(el)[0];
       if (share) return slotAfter(share, el);
     }
     return null;
