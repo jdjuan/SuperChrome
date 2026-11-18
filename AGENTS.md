@@ -10,3 +10,5 @@
 - For each releasable change, bump extension/manifest.json and package.json versions together. Pushes to main run verification and publish a new GitHub release if that version is new. Do not overwrite published assets; fix with a new version. Website uses the stable latest-release download URL.
 
 - New user-facing features must have a clearly named option in the popup sidebar, with visible controls and a short explanation.
+
+- Always use the real brand logos for third-party apps and services. Source the actual artwork from the brand or a reputable logo library and bundle it locally. Do not redraw logos or substitute generic or lookalike icons. Use the appropriate official color variant for light and dark UI.

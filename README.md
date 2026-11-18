@@ -25,7 +25,7 @@ A small browser toolkit for Chrome and Brave. [See it in action and install](htt
 
 1. [Download the latest release](https://github.com/jdjuan/SuperChrome/releases/latest/download/SuperChrome.zip) and unzip to a permanent folder.
 2. Open `chrome://extensions` or `brave://extensions`, enable Developer mode and choose **Load unpacked**. Select `SuperChrome`, the folder containing `manifest.json`.
-3. Pin the extension and choose your tools. Instagram and X downloads work right away. For YouTube downloads, open **Download Video → Copy Prompt** and give the setup instructions to an AI with local computer access.
+3. Pin the extension and choose your tools. Instagram and X downloads work right away. For YouTube downloads, open a YouTube video and choose **SuperChrome → YouTube → Copy Prompt** to set up the local helper. Instagram has an on-page download arrow. YouTube and X have direct popup actions on their video pages, and **Tools → Download from a link** accepts a pasted URL.
 
 Cloning this repo is also supported: load its `extension` folder. The manifest key preserves extension ID `lfbikaodomamodnmfheahbcbkdkaggai`. A clone alone does not install/register the download helper.
 

@@ -1,17 +1,33 @@
 (() => {
 const root=document.querySelector('#download-panel'),find=id=>root.querySelector('#'+id);
 const input=find('url'),status=find('download-status'),setup=find('helper-setup'),setupStatus=find('helper-setup-status'),download=find('download');
-let available=false,checking=false,dismissed=false,needsHelper=false;
+let available=false,checking=false,dismissed=false,needsHelper=false,activeUrl='';
 const siteOf=value=>{try{const url=new URL(value);if(url.protocol!=='https:')return null;const h=url.hostname;if(/^(www\.|m\.)?youtube\.com$|^youtu\.be$/.test(h))return 'youtube';if(/^(www\.)?instagram\.com$/.test(h))return 'instagram';if(/^(www\.|mobile\.)?(x|twitter)\.com$/.test(h))return 'x';}catch{}return null;};
+function videoPage(value,site){
+ try{
+  const url=new URL(value);
+  if(site==='youtube')return url.hostname==='youtu.be' ? url.pathname.length>1 : Boolean(
+   (url.pathname==='/watch' && url.searchParams.get('v')) || /^\/(shorts|live)\/[^/]+/.test(url.pathname));
+  return site==='x' && /\/status\/\d+/.test(url.pathname);
+ }catch{return false;}
+}
+function selection(){
+ const app=root.closest('#youtube-app,#x-app');
+ return {app,url:app?activeUrl:input.value.trim()};
+}
 async function render(){
- const site=siteOf(input.value.trim());
- const helperNeeded=!available&&(site==='youtube'||needsHelper);
- setup.hidden=available||dismissed||!helperNeeded;find('show-helper-setup').hidden=available||!setup.hidden;
- download.disabled=!site||(site==='youtube'&&!available);
- if(!input.value.trim()){status.textContent='Paste a link to begin.';return;}
+ const {app,url}=selection(),site=siteOf(url);
+ const valid=site && (!app || videoPage(url,site));
+ const helperNeeded=!available&&(site==='youtube'&&(valid||!app)||needsHelper);
+ setup.hidden=available||dismissed||!helperNeeded;
+ find('show-helper-setup').hidden=available||!setup.hidden||Boolean(app&&!valid);
+ download.disabled=!valid||(site==='youtube'&&!available);
+ if(app&&!valid){status.textContent=app.id==='youtube-app'?'Open a YouTube video to download it.':'Open an X video post to download it.';return;}
+ if(!url){status.textContent='';return;}
  if(!site){status.textContent='Enter a YouTube, Instagram or X link.';return;}
- if(site==='youtube'&&!available){status.textContent=checking?'Checking local helper…':'YouTube downloads need the local helper. Set it up once with the prompt above.';return;}
- const {job}=await chrome.storage.local.get('job');status.textContent=job?.url===input.value.trim()&&job.message?job.message:'Ready.';
+ if(site==='youtube'&&!available){status.textContent=checking?'Checking local helper…':'YouTube downloads need the local helper.';return;}
+ const {job}=await chrome.storage.local.get('job');
+ if(selection().url===url)status.textContent=job?.url===url&&job.message?job.message:'';
 }
 function check(){
  if(checking)return;checking=true;find('check-helper').disabled=true;render();
@@ -42,8 +58,9 @@ find('check-helper').onclick=check;
 find('dismiss-helper').onclick=()=>{dismissed=true;render();};
 find('show-helper-setup').onclick=()=>{dismissed=false;needsHelper=true;render();};
 input.addEventListener('input',render);
+root.addEventListener('appchange',render);
 chrome.storage.onChanged.addListener(changes=>{const job=changes?.job?.newValue;if(job?.needsHelper&&!available){needsHelper=true;dismissed=false;}render();});
-download.onclick=()=>{const url=input.value.trim(),site=siteOf(url);if(!site||(site==='youtube'&&!available))return;chrome.runtime.sendMessage({action:'download',url},r=>{status.textContent=chrome.runtime.lastError?.message||r?.error||'Download started…';});};
-chrome.tabs.query({active:true,currentWindow:true},tabs=>{input.value=tabs[0]?.url||'';render();});
+download.onclick=()=>{const {app,url}=selection(),site=siteOf(url);if(!site||(app&&!videoPage(url,site))||(site==='youtube'&&!available))return;chrome.runtime.sendMessage({action:'download',url},r=>{status.textContent=chrome.runtime.lastError?.message||r?.error||'Download started…';});};
+chrome.tabs.query({active:true,currentWindow:true},tabs=>{activeUrl=tabs[0]?.url||'';input.value=siteOf(activeUrl)?activeUrl:'';render();});
 check();
 })();

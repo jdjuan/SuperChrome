@@ -31,6 +31,15 @@ const w=page('https://www.instagram.com/p/example/');
 const d=w.document;
 const instagram=active(w,'instagram-tab');
 assert.ok(instagram.querySelector('#instagram-audio-enabled'));
+assert.equal(instagram.querySelector('#download, #inspect'),null);
+for(const tab of d.querySelectorAll('[role=tab]:not(#tools-tab)')){
+  const logo=tab.querySelector('img');
+  assert.ok(logo && fs.existsSync(path.join(__dirname,'../extension',logo.getAttribute('src'))));
+}
+for(const url of ['https://www.youtube.com/watch?v=test','https://x.com/user/status/123']){
+  const {document}=page(url);
+  for(const id of ['download','inspect'])assert.equal(document.getElementById(id).closest('details, [hidden]'),null);
+}
 const info=instagram.querySelector('summary[aria-label="About Auto-unmute videos"]');
 assert.equal(info.parentElement.open,false);
 info.click();

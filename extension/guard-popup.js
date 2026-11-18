@@ -7,7 +7,6 @@
   function render(){
     master.checked=settings.enabled!==false;master.disabled=saving;
     site.disabled=!host||saving;site.textContent=host?(guardPolicy.siteEnabled(host,settings.sites)?'Stop blocking on ':'Block popups on ')+siteName(host):'Open a website to add it';
-    find('host').textContent=host||'No website selected';
     list.replaceChildren();
     function row(title,detail,remove){
       const li=document.createElement('li'),text=document.createElement('div'),name=document.createElement('strong'),small=document.createElement('small'),button=document.createElement('button');

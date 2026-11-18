@@ -2,6 +2,7 @@
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const shared = document.getElementById('shared-tools');
   const tools = [...shared.children];
+  let currentApp = 'tools';
 
   function select(tab) {
     const panel = document.getElementById(tab.getAttribute('aria-controls'));
@@ -9,6 +10,11 @@
     for (const tool of tools) {
       const destination = panel.querySelector(`[data-tool-slot="${tool.id}"]`) || shared;
       if (tool.parentElement !== destination) destination.append(tool);
+      if (tool.classList.contains('video-actions')) {
+        tool.hidden = destination === shared ||
+          (panel.id !== 'tools-app' && panel.id !== currentApp + '-app');
+        tool.dispatchEvent(new Event('appchange'));
+      }
     }
     for (const item of tabs) {
       const active = item === tab;
@@ -48,9 +54,7 @@
 
   select(document.getElementById('tools-tab'));
   chrome.tabs.query({active:true, currentWindow:true}, ([tab]) => {
-    if (chosen) return;
-    let app = 'tools';
-    try { app = appFor(tab?.url); } catch {}
-    select(document.getElementById(app + '-tab'));
+    try { currentApp = appFor(tab?.url); } catch {}
+    select(chosen ? tabs.find(tab => tab.getAttribute('aria-selected') === 'true') : document.getElementById(currentApp + '-tab'));
   });
 })();

@@ -5,6 +5,14 @@ w.chrome={tabs:{query:(q,cb)=>cb?cb([{id:1,url}]):Promise.resolve([{id:1,url}]),
 for(const f of ['policy.js','tabs.js','download-popup.js','reel-popup.js','guard-popup.js'])w.eval(fs.readFileSync(path.join(dir,f),'utf8'));
 await new Promise(r=>setImmediate(r));return{w,messages,updates,scripts,getSettings:()=>settings};}
 (async()=>{let p=await popup('https://www.youtube.com/watch?v=abc');assert.equal(p.w.document.querySelector('#url').value,'https://www.youtube.com/watch?v=abc');p.w.document.querySelector('#download').click();assert.equal(p.messages.at(-1).action,'download');assert.equal(p.w.document.querySelector('#download-status').textContent,'Download started…');
+p=await popup('https://x.com/test/status/123');const doc=p.w.document;
+doc.querySelector('#tools-tab').click();
+doc.querySelector('#url').value='https://x.com/test/status/456';
+doc.querySelector('#x-tab').click();
+doc.querySelector('#download').click();
+assert.equal(p.messages.at(-1).url,'https://x.com/test/status/123','app action downloads the active post, independent of the pasted link');
+doc.querySelector('#tools-tab').click();
+assert.equal(doc.querySelector('#url').value,'https://x.com/test/status/456','Tools retains the pasted link');
 p=await popup('https://www.facebook.com/reel/123');assert.ok(p.w.document.querySelector('#facebook-app #reel-panel'));p.w.document.querySelector('#inspect').click();await new Promise(r=>setImmediate(r));assert.equal(p.w.document.querySelector('#reel-status').textContent,'Views: 42');p.w.document.querySelector('#watch').click();await new Promise(r=>setImmediate(r));assert.equal(p.updates[0].url,'https://www.facebook.com/watch/?v=123');
 p=await popup('https://cineb.st/movie');assert.equal(p.w.document.querySelector('#guard-panel').hidden,false);assert.match(p.w.document.querySelector('#site').textContent,/Stop blocking/);const site=p.w.document.querySelector('#site');site.click();await new Promise(r=>setImmediate(r));assert.equal(p.getSettings().sites['cineb.st'],false);
 p=await popup('https://example.com');assert.match(p.w.document.querySelector('#site').textContent,/Block popups on example.com/);p.w.document.querySelector('#tools-tab').click();assert.equal(p.w.document.querySelector('#guard-panel').hidden,false);

@@ -5,7 +5,6 @@ chrome.tabs.query({active:true,currentWindow:true}).then(([tab])=>{find('watch')
 function videoId(url) {
   const u = new URL(url);
   if (/(^|\.)(youtube\.com|youtu\.be)$/.test(u.hostname)) return u.searchParams.get('v') || u.pathname.match(/^\/(?:shorts|live)\/([^/]+)/)?.[1] || (u.hostname==='youtu.be' ? u.pathname.slice(1) : null);
-  if (/(^|\.)instagram\.com$/.test(u.hostname)) return u.pathname.match(/^\/(?:p|reel|reels)\/([^/]+)/)?.[1];
   if (/(^|\.)(x\.com|twitter\.com)$/.test(u.hostname)) return u.pathname.match(/\/status\/(\d+)/)?.[1];
   if (!/(^|\.)facebook\.com$/.test(u.hostname)) return null;
   return u.pathname.match(/^\/reel\/(\d+)\/?$/)?.[1]
@@ -15,7 +14,7 @@ function videoId(url) {
 async function currentVideo() {
   const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   const id = videoId(tab.url || '');
-  if (!id) throw new Error('Open an individual video on Facebook, YouTube, Instagram or X first.');
+  if (!id) throw new Error('Open an individual video on Facebook, YouTube or X first.');
   return {tab,id};
 }
 find('watch').addEventListener('click', async () => {
@@ -29,14 +28,6 @@ find('watch').addEventListener('click', async () => {
 find('inspect').addEventListener('click', async () => {
   try {
     const {tab,id} = await currentVideo();
-    if (/(^|\.)instagram\.com$/.test(new URL(tab.url).hostname)) {
-      status.textContent = 'Reading Instagram stats…';
-      await chrome.scripting.executeScript({target:{tabId:tab.id},files:['theme.js','instagram-stats.js']});
-      const [ig] = await chrome.scripting.executeScript({target:{tabId:tab.id},args:[id],func:async shortcode => { const api=globalThis.SuperChromeInstagramStats; try { return {text:api.text(await api.fetchStats(shortcode))}; } catch (error) { return {error:error.message}; } }});
-      if (ig.result?.error) throw new Error(ig.result.error);
-      status.textContent = `Post: ${id}\n\n${ig.result.text}\n\nDates use your computer’s timezone. These are public counts, not private creator analytics.`;
-      return;
-    }
     const [result] = await chrome.scripting.executeScript({target:{tabId:tab.id},files:['theme.js', /(^|\.)facebook\.com$/.test(new URL(tab.url).hostname) ? 'inspect.js' : 'video-stats.js']});
     const details = result.result;
     if (!details || details.id !== id) throw new Error('The video changed. Open the extension again to retry.');
