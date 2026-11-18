@@ -29,7 +29,9 @@
   function slotAfter(share, limit) {
     let item = share.closest('[role="button"], a, button');
     if (!item) return null;
-    while (item.parentElement && item.parentElement !== limit && item.parentElement.querySelectorAll('svg[aria-label]').length === 1) item = item.parentElement;
+    // Climb to the outermost wrapper that holds only this icon (hidden duplicate icons don't count), so we land beside the other icons.
+    const icons = el => [...el.querySelectorAll('svg[aria-label]')].filter(svg => svg.getBoundingClientRect().width > 0).length;
+    while (item.parentElement && item.parentElement !== limit && icons(item.parentElement) === icons(item)) item = item.parentElement;
     // Counts sit after their icon; the button goes after the Share count, not between them.
     while (item.nextElementSibling && !item.nextElementSibling.querySelector('svg') && item.nextElementSibling.textContent.trim()) item = item.nextElementSibling;
     return item;
