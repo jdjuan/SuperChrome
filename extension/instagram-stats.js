@@ -201,7 +201,7 @@
   chrome.storage?.local?.get({instagramStats: true}).then(settings => { enabled = settings.instagramStats !== false; current = null; update(); }).catch(() => update());
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local' && changes.instagramStats) { enabled = changes.instagramStats.newValue !== false; current = null; dismissed = null; update(); }
-    if (area === 'local' && changes.instagramGridStats) { gridEnabled = changes.instagramGridStats.newValue !== false; gridEnabled ? scanGrid() : clearGrid(); }
+    if (area === 'local' && changes.instagramGridStats) { gridEnabled = changes.instagramGridStats.newValue !== false; clearGrid(); if (gridEnabled) scanGrid(); }
   });
 
   // Grid chips: upload date and counts on every visible tile of profile, Reels-tab, tagged and saved grids.
@@ -274,7 +274,9 @@
   }
   function clearGrid() {
     for (const holder of chips) holder.remove();
-    chips.clear(); queue.length = 0;
+    chips.clear(); queue.length = 0; rateLimitedUntil = 0;
+    // Forget every observed tile so turning the switch back on starts a fresh pass.
+    observer?.disconnect();
     for (const anchor of document.querySelectorAll('main a[href]')) tiles.delete(anchor);
   }
   new MutationObserver(() => {

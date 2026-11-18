@@ -44,7 +44,7 @@ const read=f=>fs.readFileSync('extension/'+f,'utf8'),tick=()=>new Promise(r=>set
  {
   const dom=new JSDOM('<html><body><script type="application/json">{"x":["DTSGInitialData",[],{"token":"DT"}],"y":["LSD",[],{"token":"LS"}]}</script><main><a id="t1" href="/jdjuan0/reel/DfYBSnvsqJb/"><img></a><a id="t2" href="/p/abc/"><div style="background-image:url(x)"></div></a><a id="small" href="/p/zzz/"><img></a><article><a id="feed" href="/p/feed/"><img></a></article></main></body></html>',{url:'https://www.instagram.com/jdjuan0/reels/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
   w.document.cookie='ds_user_id=99';
-  w.matchMedia=()=>({matches:false});w.chrome={storage:{local:{get:async d=>d},onChanged:{addListener(){}}}};
+  w.matchMedia=()=>({matches:false});const gridListeners=[];w.chrome={storage:{local:{get:async d=>d},onChanged:{addListener:f=>gridListeners.push(f)}}};
   w.HTMLElement.prototype.getBoundingClientRect=function(){const big=this.id!=='small';return {width:big?300:40,height:big?400:40,top:0,left:0,right:0,bottom:0};};
   const paths=[];let graphBody;
   w.fetch=async(p,init)=>{paths.push(p);if(p==='/api/graphql'){graphBody=String(init.body);return {ok:true,json:async()=>({data:{media:{umapi_saves_count:{value:{results:[{total_value:7}]}}}}})};}
@@ -63,6 +63,10 @@ const read=f=>fs.readFileSync('extension/'+f,'utf8'),tick=()=>new Promise(r=>set
   assert.deepEqual([...chipOf('t2').shadowRoot.querySelectorAll('.row')].map(r=>r.textContent),['Views5K','Likes24','Comments4','Sends3']);
   assert.match(chip.querySelector('style').textContent,/rgb\(0 0 0 \/ \.76\)/);
   assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,2);
+  // The switch applies live, in both directions, without reloading Instagram.
+  const flip=v=>gridListeners.forEach(f=>f({instagramGridStats:{newValue:v}},'local'));
+  flip(false);assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,0,'off removes chips at once');
+  flip(true);await new Promise(r=>setTimeout(r,900));assert.equal(w.document.querySelectorAll('[data-superchrome="instagram-grid-stats"]').length,2,'on brings chips back without reload');
  }
  // Own profile: saves start in parallel with post info; six tiles load at once; results persist across reloads.
  {

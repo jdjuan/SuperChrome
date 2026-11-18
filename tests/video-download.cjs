@@ -42,6 +42,28 @@ function setup(url,html,stored={}){
  // The button never covers another layer (a dialog) sitting over the video.
  t=setup('https://x.com/u/status/9',post('9'));const v=t.w.document.querySelector('video');t.size(v);t.w.document.elementFromPoint=()=>t.w.document.body;await t.flush();assert.equal(t.buttons().length,0);t.w.close();
 
+ // Inline mode: YouTube puts the button in the action row, X in the post's action bar; the fallback overlay is not used.
+ t=setup('https://www.youtube.com/watch?v=abc','<div id="movie_player"><video></video></div><ytd-watch-metadata><div id="top-level-buttons-computed"><i></i></div></ytd-watch-metadata>');
+ {const bar=t.w.document.querySelector('#top-level-buttons-computed');Object.defineProperty(bar,'offsetParent',{get:()=>t.w.document.body});t.size(t.w.document.querySelector('video'));await t.flush();
+  const inline=bar.querySelector('[data-superchrome="video-download-inline"]');assert.ok(inline,'host inside the action row');assert.equal(inline.parentElement,bar);
+  const ib=inline.shadowRoot.querySelector('button');assert.ok(ib);assert.equal(t.buttons().length,0,'no floating copy');
+  assert.match(inline.shadowRoot.querySelector('style').textContent,/yt-spec-text-primary/,'uses the site theme colors');
+  ib.click();await tick();assert.equal(t.sent.at(-1).url,'https://www.youtube.com/watch?v=abc');
+  t.change({youtubeDownloadButton:{newValue:false}});await t.flush();assert.equal(bar.querySelector('[data-superchrome="video-download-inline"]'),null,'switch removes the inline button');}
+ t.w.close();
+ t=setup('https://x.com/home','<article><a href="/u/status/5"><time>1h</time></a><video></video><div role="group"><div data-testid="like"></div></div></article>');
+ t.size(t.w.document.querySelector('video'));await t.flush();
+ {const group=t.w.document.querySelector('[role=group]'),inline=group.querySelector('[data-superchrome="video-download-inline"]');assert.ok(inline);inline.shadowRoot.querySelector('button').click();await tick();assert.equal(t.sent.at(-1).url,'https://x.com/u/status/5');}
+ t.w.close();
+
+ // Instagram: the video's button joins the row of interaction icons, right after Share.
+ {const ig=new JSDOM('<main><article><video id="v"></video><section><div><div role="button"><svg aria-label="Like"></svg></div></div><div><div role="button"><svg aria-label="Comment"></svg></div></div><div id="share"><div role="button"><svg aria-label="Share"></svg></div></div><div id="save"><div role="button"><svg aria-label="Save"></svg></div></div></section></article></main>',{url:'https://www.instagram.com/p/t/',runScripts:'outside-only'}).window;const frames=[];
+  ig.chrome={storage:{onChanged:{addListener(){}},local:{get:async d=>d}},runtime:{}};ig.requestAnimationFrame=f=>frames.push(f);
+  const v=ig.document.querySelector('#v');v.getBoundingClientRect=()=>({width:500,height:500,top:20,left:20,right:520,bottom:520});v.getClientRects=()=>[{}];ig.document.elementFromPoint=()=>null;
+  ig.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();
+  const inline=ig.document.querySelector('[data-superchrome="instagram-download-inline"]');assert.ok(inline,'inline host');assert.equal(inline.previousElementSibling.id,'share');assert.equal(inline.nextElementSibling.id,'save');
+  assert.ok(inline.shadowRoot.querySelector('button'));assert.equal(ig.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot.querySelectorAll('button').length,0);
+  ig.close();}
  // Popup switches: default on, saved on change, rolled back on failure, synced across changes.
  const popup=new JSDOM(fs.readFileSync('extension/popup.html','utf8'),{runScripts:'outside-only'}).window;let store={},listeners=[],fail=false;
  popup.chrome={storage:{local:{get:async d=>({...d,...store}),set:async o=>{if(fail)throw Error('x');Object.assign(store,o);}},onChanged:{addListener:f=>listeners.push(f)}}};
@@ -58,5 +80,22 @@ function setup(url,html,stored={}){
  ig.eval(fs.readFileSync('extension/instagram-images.js','utf8'));await tick();while(frames.length)frames.shift()();
  const igHost=()=>ig.document.querySelector('[data-superchrome="instagram-images"]').shadowRoot;assert.equal(igHost().querySelectorAll('button').length,0,'off in storage means no button');
  igChange({instagramDownloadButton:{newValue:true}},'local');while(frames.length)frames.shift()();assert.equal(igHost().querySelectorAll('button').length,1);
- console.log('PASS: YouTube and X in-page download buttons (URL, progress, helper message, per-post, overlap, on/off) and popup switches for Instagram, YouTube and X.');
+
+ // YouTube stats line under the title.
+ {const html='<ytd-watch-metadata><div id="top-row"></div></ytd-watch-metadata>';
+  const dom=new JSDOM(html,{url:'https://www.youtube.com/watch?v=abc',runScripts:'outside-only'}),w=dom.window;const ls=[];let fetched=0;
+  w.chrome={storage:{onChanged:{addListener:f=>ls.push(f)},local:{get:async d=>d}}};w.setInterval=()=>0;
+  w.fetch=async u=>{fetched++;return {ok:true,text:async()=>'<x>"uploadDate":"2005-04-24T03:31:52+00:00"..."videoDetails":{"videoId":"abc","title":"t","viewCount":"448787415","x":1}'};};
+  w.eval(fs.readFileSync('extension/youtube-stats.js','utf8'));await tick();await tick();
+  const host=()=>w.document.querySelector('[data-superchrome="youtube-stats"]');
+  assert.ok(host(),'mounted above the owner row');assert.equal(host().nextElementSibling.id,'top-row');
+  const text=host().shadowRoot.querySelector('.line').textContent;assert.match(text,/Uploaded .*2005/);assert.match(text,/448,787,415 views|448\.787\.415 views|448 787 415 views/);
+  assert.match(host().shadowRoot.querySelector('style').textContent,/yt-spec-text-secondary/);assert.equal(fetched,1);
+  ls.forEach(f=>f({youtubeStats:{newValue:false}},'local'));assert.equal(host(),null,'off removes it at once');
+  ls.forEach(f=>f({youtubeStats:{newValue:true}},'local'));await tick();await tick();assert.ok(host(),'on brings it back without reload');assert.equal(fetched,1,'cached per video');
+  w.history.pushState({},'','/watch?v=zzz');w.fetch=async()=>({ok:true,text:async()=>'"videoDetails":{"videoId":"zzz","viewCount":"5"}'});
+  w.dispatchEvent(new w.Event('yt-navigate-finish'));await tick();await tick();assert.match(host().shadowRoot.querySelector('.line').textContent,/5 views/);
+  w.history.pushState({},'','/results?search_query=x');w.dispatchEvent(new w.Event('yt-navigate-finish'));assert.equal(host(),null,'nothing off watch pages');
+  w.close();}
+ console.log('PASS: YouTube and X in-page download buttons (URL, progress, helper message, per-post, overlap, on/off) and inline placement, YouTube date/views line, and popup switches for Instagram, YouTube and X.');
 })().catch(e=>{console.error(e);process.exit(1)});

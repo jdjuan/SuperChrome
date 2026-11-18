@@ -11,7 +11,27 @@
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
     .status[hidden] { display: none; }
   </style>`;
-  const buttons = new Map();
+  const buttons = new Map(), inlines = new Map();
+  const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
+  // Inside Instagram's own action row the button takes the row's colors, so it reads in light and dark.
+  const INLINE_STYLE = `:host { display: inline-flex; align-items: center; flex: none; }
+    button { all: initial; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: inherit; font: 20px/1 system-ui; }
+    button:hover { background: rgba(127, 127, 127, .22); }
+    button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+    button:disabled { cursor: wait; opacity: .7; }`;
+  // The slot just after this video's Share button, found by walking out from the video.
+  function videoAnchor(video) {
+    for (let el = video.parentElement; el && el !== document.body; el = el.parentElement) {
+      if (el.querySelectorAll('video').length > 1) return null;
+      const share = el.querySelector('svg[aria-label="Share"]');
+      if (!share) continue;
+      let item = share.closest('[role="button"], a, button');
+      if (!item) return null;
+      while (item.parentElement && item.parentElement !== el && item.parentElement.querySelectorAll('svg[aria-label]').length === 1) item = item.parentElement;
+      return item;
+    }
+    return null;
+  }
   let enabled = false, revision = 0;
   let scheduled = false;
   let latestJob = null;
@@ -152,13 +172,14 @@
           if (hit && parent.contains(hit)) break;
         }
       }
-      if (hit && hit !== host && hit !== img && !media.contains(hit)) continue;
+      const item = kind === 'video' ? videoAnchor(img) : null;
+      if (!item && hit && hit !== host && hit !== img && !media.contains(hit)) continue;
       found.add(img);
       let button = buttons.get(img);
       if (!button) {
         button = document.createElement('button');
         button.type = 'button';
-        button.textContent = '↓';
+        if (kind === 'video') button.innerHTML = ICON; else button.textContent = '↓';
         button.title = `Download ${kind}`;
         button.setAttribute('aria-label', `Download Instagram ${kind}`);
         button.addEventListener('click', event => {event.preventDefault(); event.stopPropagation(); save(img, button);});
@@ -172,12 +193,29 @@
         buttons.set(img, button);
         if (kind === 'video' && latestJob?.url === videoUrl(img) && (!latestJob.slide || videoSelection(img).slide === latestJob.slide)) showVideoStatus(button, latestJob);
       }
+      if (item) {
+        let inline = inlines.get(img);
+        if (!inline) {
+          inline = document.createElement('div');
+          inline.dataset.superchrome = 'instagram-download-inline';
+          inline.attachShadow({mode: 'open'}).innerHTML = `<style>${INLINE_STYLE}</style>`;
+          inlines.set(img, inline);
+        }
+        if (inline.previousElementSibling !== item) item.after(inline);
+        if (button.parentNode !== inline.shadowRoot) inline.shadowRoot.append(button);
+        const r = button.getBoundingClientRect();
+        button.status.style.left = `${Math.max(8, r.right - 255)}px`;
+        button.status.style.top = `${r.bottom + 8}px`;
+        continue;
+      }
+      inlines.get(img)?.remove();
+      if (button.parentNode !== shadow) shadow.append(button);
       button.style.left = `${x - 15}px`;
       button.style.top = `${y - 15}px`;
       button.status.style.left = `${Math.max(8, x - 245)}px`;
       button.status.style.top = `${y + 23}px`;
     }
-    for (const [img, button] of buttons) if (!found.has(img)) {button.status.remove(); button.remove(); buttons.delete(img);}
+    for (const [img, button] of buttons) if (!found.has(img)) {button.status.remove(); button.remove(); inlines.get(img)?.remove(); inlines.delete(img); buttons.delete(img);}
   }
   function schedule() {
     if (!scheduled) {scheduled = true; requestAnimationFrame(reconcile);}

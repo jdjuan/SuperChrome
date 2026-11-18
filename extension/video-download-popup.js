@@ -1,9 +1,10 @@
-// On/off switches for the in-page download buttons (Instagram, YouTube, X).
+// On/off switches for in-page download buttons (Instagram, YouTube, X) and YouTube's on-page stats.
 (() => {
   for (const [key, toggleId, statusId] of [
     ['instagramDownloadButton', '#instagram-download-button', '#instagram-download-status'],
     ['youtubeDownloadButton', '#youtube-download-button', '#youtube-download-status'],
-    ['xDownloadButton', '#x-download-button', '#x-download-status']
+    ['xDownloadButton', '#x-download-button', '#x-download-status'],
+    ['youtubeStats', '#youtube-stats-enabled', '#youtube-stats-status']
   ]) {
     const toggle = document.querySelector(toggleId), status = document.querySelector(statusId);
     if (!toggle) continue;

@@ -8,15 +8,25 @@
   host.dataset.superchrome = 'video-download';
   const shadow = host.attachShadow({mode: 'open'});
   // Colors are owned here so the button reads on any video, in light or dark mode.
-  shadow.innerHTML = `<style>
+  const STYLE = `
     :host { all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
     button { all: initial; box-sizing: border-box; position: fixed; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #606060; border-radius: 50%; background: #202020; color: #fff; cursor: pointer; pointer-events: auto; font: 16px/1 system-ui; }
     button svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     button:hover, button:focus-visible { background: #383838; outline: 2px solid #fff; outline-offset: 2px; }
     button:disabled { cursor: wait; }
     .status { all: initial; box-sizing: border-box; position: fixed; max-width: 260px; padding: 7px 10px; border: 1px solid #606060; border-radius: 6px; background: #202020; color: #fff; font: 12px/1.4 system-ui; overflow-wrap: anywhere; pointer-events: none; }
-    .status[hidden] { display: none; }
-  </style>`;
+    .status[hidden] { display: none; }`;
+  // Inline mode sits in the site's own action row and takes its colors from the page, so it reads in light and dark.
+  const INLINE_STYLE = `
+    :host { display: inline-flex; align-items: center; flex: none; margin-left: 8px; }
+    button { all: initial; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: var(--yt-spec-text-primary, currentColor); background: var(--yt-spec-badge-chip-background, transparent); font: 16px/1 system-ui; }
+    :host(.x) button { width: 34px; height: 34px; background: transparent; color: rgb(113, 118, 123); }
+    :host(.x) { margin-left: 0; }
+    button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    button:hover { background: var(--yt-spec-mono-tonal-hover, rgba(127, 127, 127, .22)); }
+    button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+    button:disabled { cursor: wait; opacity: .7; }`;
+  shadow.innerHTML = `<style>${STYLE}</style>`;
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
   const entries = new Map();
   let enabled = false, revision = 0, scheduled = false, latestJob = null;
@@ -33,7 +43,7 @@
       const area = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
       if (area > bestArea) { best = video; bestArea = area; }
     }
-    return best ? [{video: best, url, scope: best.closest('#movie_player, ytd-reel-video-renderer') || best.parentElement}] : [];
+    return best ? [{video: best, url, scope: best.closest('#movie_player, ytd-reel-video-renderer') || best.parentElement, anchor: id ? youtubeAnchor() : null}] : [];
   }
   function xTargets() {
     const targets = [];
@@ -43,11 +53,24 @@
       let path = '';
       try { path = new URL(link?.href || location.href, location.href).pathname; } catch {}
       if (!/\/status\/\d+/.test(path)) continue;
-      targets.push({video, url: location.origin + path, scope: article});
+      targets.push({video, url: location.origin + path, scope: article, anchor: xAnchor(article)});
     }
     return targets;
   }
 
+  // The site's own row of action buttons (like, share…), when it is on the page.
+  function youtubeAnchor() {
+    return [...document.querySelectorAll('ytd-watch-metadata #top-level-buttons-computed')].find(el => el.offsetParent !== null) || null;
+  }
+  function xAnchor(article) {
+    const groups = [...article.querySelectorAll('[role="group"]')].filter(g => g.querySelector('[data-testid="like"], [data-testid="unlike"]'));
+    return groups.at(-1) || null;
+  }
+  function place(entry) {
+    const r = entry.button.getBoundingClientRect();
+    entry.status.style.left = `${Math.max(8, r.right - 255)}px`;
+    entry.status.style.top = `${r.bottom + 8}px`;
+  }
   function show(entry, job) {
     const done = typeof job.ok === 'boolean';
     const {button, status} = entry;
@@ -62,6 +85,7 @@
     button.title = message;
     status.textContent = message;
     status.hidden = false;
+    place(entry);
     if (done && job.ok) entry.timer = setTimeout(() => reset(entry), 6000);
   }
   function reset(entry) {
@@ -80,8 +104,9 @@
       show(entry, {ok: false, message: error.message});
     }
   }
+  function drop(entry) { clearTimeout(entry.timer); entry.button.remove(); entry.status.remove(); entry.inline?.remove(); }
   function clear() {
-    for (const entry of entries.values()) { clearTimeout(entry.timer); entry.button.remove(); entry.status.remove(); }
+    for (const entry of entries.values()) drop(entry);
     entries.clear();
   }
   function reconcile() {
@@ -89,12 +114,15 @@
     if (!enabled) { clear(); return; }
     if (!host.isConnected) document.documentElement.append(host);
     const found = new Set();
-    for (const {video, url, scope} of site === 'youtube' ? youtubeTargets() : xTargets()) {
+    for (const {video, url, scope, anchor} of site === 'youtube' ? youtubeTargets() : xTargets()) {
       const rect = video.getBoundingClientRect();
-      if (rect.width < 160 || rect.height < 90 || rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth || !video.getClientRects().length) continue;
-      const x = Math.min(rect.right, innerWidth) - 30, y = Math.max(rect.top, 0) + 30;
-      const hit = document.elementFromPoint?.(x, y);
-      if (hit && hit !== host && hit !== video && !scope?.contains(hit)) continue;
+      let x = 0, y = 0;
+      if (!anchor) {
+        if (rect.width < 160 || rect.height < 90 || rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth || !video.getClientRects().length) continue;
+        x = Math.min(rect.right, innerWidth) - 30; y = Math.max(rect.top, 0) + 30;
+        const hit = document.elementFromPoint?.(x, y);
+        if (hit && hit !== host && hit !== video && !scope?.contains(hit)) continue;
+      }
       found.add(video);
       let entry = entries.get(video);
       if (!entry) {
@@ -107,19 +135,31 @@
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
         status.hidden = true;
-        entry = {video, url, button, status, timer: 0};
+        entry = {video, url, button, status, timer: 0, inline: null};
         button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); save(entry); });
-        shadow.append(button, status);
+        shadow.append(status);
         entries.set(video, entry);
       }
       if (entry.url !== url) { entry.url = url; reset(entry); }
+      if (anchor) {
+        if (!entry.inline) {
+          entry.inline = document.createElement('div');
+          entry.inline.dataset.superchrome = 'video-download-inline';
+          entry.inline.className = site;
+          entry.inline.attachShadow({mode: 'open'}).innerHTML = `<style>${INLINE_STYLE}</style>`;
+        }
+        if (entry.inline.parentElement !== anchor) anchor.append(entry.inline);
+        if (entry.button.parentNode !== entry.inline.shadowRoot) entry.inline.shadowRoot.append(entry.button);
+      } else {
+        entry.inline?.remove();
+        if (entry.button.parentNode !== shadow) shadow.append(entry.button);
+        entry.button.style.left = `${x - 17}px`;
+        entry.button.style.top = `${y - 17}px`;
+      }
       if (latestJob?.url === url && typeof latestJob.ok !== 'boolean') show(entry, latestJob);
-      entry.button.style.left = `${x - 17}px`;
-      entry.button.style.top = `${y - 17}px`;
-      entry.status.style.left = `${Math.max(8, x - 255)}px`;
-      entry.status.style.top = `${y + 24}px`;
+      place(entry);
     }
-    for (const [video, entry] of entries) if (!found.has(video)) { clearTimeout(entry.timer); entry.button.remove(); entry.status.remove(); entries.delete(video); }
+    for (const [video, entry] of entries) if (!found.has(video)) { drop(entry); entries.delete(video); }
   }
   function schedule() {
     if (!scheduled) { scheduled = true; requestAnimationFrame(reconcile); }
