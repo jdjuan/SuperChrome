@@ -12,6 +12,8 @@ html[data-sc-gmail-dark] [data-sc-gmail-fg="muted"]:not([data-sc-gmail-sampling]
 html[data-sc-gmail-dark] [data-sc-gmail-fg="link"]:not([data-sc-gmail-sampling]) { color:#aecbfa!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-fill="icon"]:not([data-sc-gmail-sampling]) { fill:#bdc1c6!important; }
 html[data-sc-gmail-dark] [data-sc-gmail-stroke="icon"]:not([data-sc-gmail-sampling]) { stroke:#bdc1c6!important; }
+/* Gmail paints a separate backdrop behind the sticky filters and mail actions. */
+html[data-sc-gmail-dark] .aeI .wZkTXb .G-atb.D::after { background-color:#202124!important; }
 /* Only Gmail's monochrome sprite icons; photos, logos and colored stars stay intact. */
 html[data-sc-gmail-dark] :is(.T-I-J3,.qj,.G-asx,.aAu,.d-Na-J3,.ajz,.aaA,.dv,.J-Z-M-I-JG,.J-JN-M-I-JG):not(.a3s *) { filter:brightness(0) invert(.85)!important; }
 /* Row actions and unchecked markers use light-theme raster assets, not text.

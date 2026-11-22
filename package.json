@@ -1,6 +1,6 @@
 {
   "name": "superchrome",
-  "version": "3.26.5",
+  "version": "3.26.6",
   "private": true,
   "description": "Personal Chrome toolkit",
   "scripts": {
