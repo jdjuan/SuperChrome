@@ -1,6 +1,6 @@
 # SuperChrome workflow
 
-- Juan authorizes automatically committing and pushing completed SuperChrome updates to GitHub after appropriate local verification. Do not ask again for routine commits/pushes for this extension.
+- Juan authorizes automatically committing and pushing completed SuperChrome updates to GitHub after the Chrome verification below.
 - Reload and verify the unpacked extension in Chrome after updates. Successful Chrome verification is sufficient; do not routinely launch, reload, or test Brave. Check Brave only when Juan explicitly requests it or the issue is Brave-specific. Keep the extension ID stable.
 - No new permissions without explaining the need and obtaining any required approval.
 - Keep .codegraph/ and local browser settings out of Git.

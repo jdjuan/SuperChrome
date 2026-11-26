@@ -19,14 +19,14 @@
     try { await chrome.storage.local.set({linkedinRevealUntil:Date.now()+minutes*60000}); }
     catch { const status=message?.shadowRoot.querySelector('[role="status"]');if(status)setText(status,'Could not start the timer. Try again.'); }
   }
-  const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
+  const selector = `html[${attribute}] :is(main, [role="main"]) :is(.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], :is([data-testid="mainFeed"], [data-testid="NetworkFeedListCollection"]) [componentkey^="update-card-focus"], :is([data-testid="mainFeed"], [data-testid="NetworkFeedListCollection"]) [role="progressbar"]):not([role="dialog"], [role="dialog"] *, .msg-overlay-container, .msg-overlay-container *)`;
   // Legacy feed content can be transplanted into this shadow root. Document
   // styles cannot cross that boundary. Keep its host covered until scoped rules
   // are installed, including when attachShadow happens after the host is added.
   const shadowEntries = new Map();
   const shadowReady = 'data-superchrome-linkedin-shadow-ready';
   const shadowFocus = 'data-superchrome-linkedin-shadow-focus';
-  const postSelector = '.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-testid="mainFeed"] [componentkey^="update-card-focus"], [data-testid="mainFeed"] [role="progressbar"]';
+  const postSelector = '.scaffold-finite-scroll, .scaffold-finite-scroll__content, .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], :is([data-testid="mainFeed"], [data-testid="NetworkFeedListCollection"]) [componentkey^="update-card-focus"], :is([data-testid="mainFeed"], [data-testid="NetworkFeedListCollection"]) [role="progressbar"]';
   function syncShadow(active) {
     for (const [host, entry] of shadowEntries) if (!host.isConnected) { entry.observer.disconnect(); shadowEntries.delete(host); }
     const host = document.querySelector('#interop-outlet');
@@ -51,8 +51,10 @@
     lastUrl = location.href;
     const route = routeUrl();
     const highlighted = route.searchParams.get('highlightedUpdateUrn');
-    // Signed-in LinkedIn paints feed posts at / before replacing its URL with /feed/.
-    const home = ['/','/feed','/feed/'].includes(route.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
+    // Signed-in LinkedIn paints feed posts at / before replacing its URL with
+    // /feed/ or a feed tab such as /feed/foryou/ or /feed/network/. Deeper
+    // routes (/feed/update/<urn>/, /feed/hashtag/<tag>/) are not Home.
+    const home = /^\/(feed(\/[a-z-]+)?\/?)?$/.test(route.pathname) && !/^urn:li:(activity|share|ugcPost):[0-9]+$/.test(highlighted || '');
     const revealing = enabled && home && revealUntil > Date.now();
     const active = enabled && home && !revealing;
     document.documentElement.toggleAttribute('data-superchrome-linkedin-revealed', revealing);
@@ -108,7 +110,7 @@
       shadow.querySelectorAll('[data-minutes]').forEach(button=>{button.onclick=()=>reveal(Number(button.dataset.minutes));});
     }
     setText(message.shadowRoot.querySelector('h1'),revealUntil>0 && revealUntil<=Date.now() ? 'Time’s up. LinkedIn will survive.' : 'You have better things to do.');
-    const feed = main.querySelector('[data-testid="mainFeed"]');
+    const feed = main.querySelector('[data-testid="mainFeed"], [data-testid="NetworkFeedListCollection"]');
     if (feed) {
       // Current LinkedIn puts the composer and sort controls in this list too.
       // Insert before the first post's lazy-mount branch, without hiding the list.
